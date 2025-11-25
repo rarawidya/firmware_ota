@@ -1,0 +1,675 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>STM32 OTA via ESP32</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <style>
+    :root{
+      --primary:#19c37d;
+      --primary-dark:#12a164;
+      --primary-soft:#d9fbe9;
+      --border:#d1d5db;
+      --bg:#e5e7eb;
+      --card-bg:rgba(255,255,255,0.86);
+      --text:#0f172a;
+      --muted:#6b7280;
+      --danger:#ef4444;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,#e0fbea 0,#e0f2fe 40%,#e5e7eb 100%);
+      color:var(--text);
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px 12px;
+    }
+
+    .card{
+      width:100%;
+      max-width:780px;
+      background:var(--card-bg);
+      border-radius:26px;
+      box-shadow:
+        0 28px 80px rgba(15,23,42,0.35),
+        0 0 0 1px rgba(148,163,184,0.35);
+      padding:26px 26px 22px;
+      backdrop-filter:blur(22px);
+      -webkit-backdrop-filter:blur(22px);
+    }
+
+    /* Header */
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:22px;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    /* LOGO STM32 OTA – hijau */
+    .logo{
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      padding:4px;
+      background:radial-gradient(circle at 30% 20%,#bbf7d0,#16a34a);
+      box-shadow:
+        0 10px 24px rgba(22,163,74,0.45),
+        0 0 0 1px rgba(22,163,74,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .logo svg{
+      width:30px;
+      height:30px;
+      display:block;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .title-main{
+      font-size:1.35rem;
+      font-weight:700;
+    }
+    .title-sub{
+      font-size:.85rem;
+      color:var(--muted);
+    }
+
+    /* Layout inside card */
+    .grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);
+      gap:18px;
+    }
+    @media(max-width:768px){
+      .card{ padding:22px 18px 18px; }
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    .panel{
+      border-radius:20px;
+      border:1px solid var(--border);
+      padding:14px 14px 16px;
+      background:rgba(250,250,250,0.9);
+    }
+
+    .panel-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      min-height:40px;
+      margin-bottom:10px;
+    }
+    .panel-title{
+      font-size:.95rem;
+      font-weight:600;
+    }
+    .panel-caption{
+      font-size:.78rem;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    /* Upload box – modern look */
+    .upload-box{
+      margin-top:8px;
+      margin-bottom:10px;
+      border-radius:18px;
+      border:1px dashed #d4dde8;
+      background:linear-gradient(145deg,#ffffff,#f7fafc);
+      padding:18px 12px;
+      text-align:center;
+      cursor:pointer;
+      transition:border .15s, box-shadow .15s, transform .05s, background .15s;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+    }
+    .upload-box:hover{
+      border-color:var(--primary);
+      background:linear-gradient(145deg,#ffffff,#ecfdf3);
+      box-shadow:0 10px 24px rgba(25,195,125,0.18);
+      transform:translateY(-1px);
+    }
+
+    /* ICON DEFAULT: lingkaran hijau + panah */
+    .upload-icon{
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      border:1px solid rgba(25,195,125,0.6);
+      background:radial-gradient(circle at 30% 30%,#ffffff,#bbf7d0);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--primary-dark);
+      font-size:16px;
+      box-shadow:0 4px 10px rgba(25,195,125,0.45);
+      margin-bottom:4px;
+      transition:all .18s ease;
+    }
+
+    /* ICON FILE: kotak dengan tulisan BIN dan sudut terlipat */
+    .upload-icon-file{
+      border-radius:9px;
+      background:#ffffff;
+      border:2px solid var(--primary-dark);
+      box-shadow:0 4px 10px rgba(25,195,125,0.25);
+      position:relative;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:0.5px;
+      color:var(--primary-dark);
+    }
+    .upload-icon-file::after{
+      content:"";
+      position:absolute;
+      top:5px;
+      right:5px;
+      width:9px;
+      height:9px;
+      background:linear-gradient(135deg,#e5f3eb,#ffffff);
+      border-left:1px solid rgba(15,23,42,0.08);
+      border-bottom:1px solid rgba(15,23,42,0.08);
+      clip-path:polygon(0 0,100% 0,100% 100%);
+    }
+
+    .upload-title,
+    .upload-sub{
+      transition:opacity .18s ease, margin .18s ease, height .18s ease;
+    }
+    .upload-title{
+      font-size:.9rem;
+      font-weight:500;
+    }
+    .upload-sub{
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    /* ketika file sudah dipilih → sembunyikan teks helper */
+    .upload-box.has-file .upload-title,
+    .upload-box.has-file .upload-sub{
+      opacity:0;
+      height:0;
+      margin:0;
+      pointer-events:none;
+    }
+
+    .upload-file-label{
+      font-size:.8rem;
+      color:var(--muted);
+      margin-top:2px;
+    }
+    .upload-file-label strong{
+      color:var(--text);
+      font-weight:600;
+    }
+
+    input[type=file]{ display:none; }
+
+    .file-meta{
+      font-size:.8rem;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .file-name{
+      font-weight:500;
+      color:var(--text);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    /* Progress */
+    .progress-wrap{
+      margin-bottom:8px;
+    }
+    .progress-bg{
+      width:100%;
+      height:8px;
+      border-radius:999px;
+      background:#e5e7eb;
+      overflow:hidden;
+    }
+    .progress-fill{
+      width:0%;
+      height:100%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--primary),#4ade80);
+      transition:width .2s ease-out;
+    }
+    .progress-label{
+      display:flex;
+      justify-content:space-between;
+      font-size:.75rem;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    /* Buttons */
+    .btn-row{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .btn{
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:7px 14px;
+      font-size:.8rem;
+      cursor:pointer;
+      background:#ffffff;
+      color:#111827;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      transition:background .15s, box-shadow .15s, transform .05s;
+    }
+    .btn:hover{
+      background:#f3faf7;
+      box-shadow:0 4px 12px rgba(15,23,42,0.12);
+    }
+    .btn:active{
+      transform:translateY(1px);
+      box-shadow:none;
+    }
+    .btn-primary{
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#ffffff;
+    }
+    .btn-primary:hover{
+      background:var(--primary-dark);
+    }
+    .btn[disabled]{
+      opacity:.55;
+      cursor:default;
+      box-shadow:none;
+    }
+    .btn-ghost-green{
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      background:#ffffff;
+    }
+    .btn-ghost-green:hover{
+      background:#ecfdf3;
+    }
+
+    /* Log */
+    #log{
+      white-space:pre-wrap;
+      background:#f9fafb;
+      padding:10px;
+      height:190px;
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid var(--border);
+      font-family:ui-monospace,Menlo,Consolas,monospace;
+      font-size:.78rem;
+      color:#111827;
+    }
+    .log-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:6px;
+      font-size:.8rem;
+      color:var(--muted);
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:4px 14px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:.78rem;
+      font-weight:500;
+      color:var(--muted);
+      background:#ffffff;
+      white-space:nowrap;
+      min-width:110px;
+      box-shadow:0 1px 2px rgba(15,23,42,0.04);
+      box-sizing:border-box;
+    }
+    .status-pill.running{
+      border-color:rgba(234,179,8,0.9);
+      color:#b45309;
+      background:#fefce8;
+    }
+    .status-pill.ok{
+      border-color:rgba(25,195,125,0.9);
+      color:var(--primary-dark);
+      background:#ecfdf3;
+    }
+    .status-pill.err{
+      border-color:#fca5a5;
+      color:#b91c1c;
+      background:#fef2f2;
+    }
+
+    .status-text{
+      font-size:.8rem;
+      color:var(--muted);
+      margin-top:8px;
+    }
+    .status-text.error{
+      color:#b91c1c;
+      font-weight:500;
+    }
+
+    .footer-note{
+      margin-top:14px;
+      font-size:.78rem;
+      color:var(--muted);
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <!-- LOGO HIJAU STM32 OTA (inline SVG) -->
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <rect x="8" y="8" width="48" height="48" rx="14" fill="#22c55e"/>
+              <rect x="20" y="20" width="24" height="24" rx="6" fill="#f9fafb"/>
+              <rect x="24" y="24" width="16" height="16" rx="3" fill="#22c55e"/>
+              <path d="M32 19 L28 15 L30 15 L30 11 L34 11 L34 15 L36 15 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+              <path d="M32 45 L36 49 L34 49 L34 53 L30 53 L30 49 L28 49 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+              <rect x="14" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="14" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+            </svg>
+          </div>
+
+          <div class="title">
+            <div class="title-main">STM32 OTA</div>
+            <div class="title-sub">Firmware update via ESP32 Wi-Fi bridge</div>
+          </div>
+        </div>
+
+        <!-- GANTI: indikator ESP32 online → tombol Setting -->
+        <button class="btn btn-ghost-green" id="btnSetting">Settings</button>
+      </div>
+
+      <div class="grid">
+        <!-- LEFT PANEL -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Upload firmware</div>
+              <div class="panel-caption">Select STM32 firmware file (.bin)</div>
+            </div>
+          </div>
+
+          <label class="upload-box" id="uploadBox">
+            <div class="upload-icon">⬆</div>
+            <div class="upload-title">Click to select firmware</div>
+            <div class="upload-sub">or drop a .bin file here</div>
+            <div class="upload-file-label" id="uploadFileLabel">No file selected</div>
+            <input type="file" id="fwFile" accept=".bin">
+          </label>
+
+          <div class="file-meta">
+            <span class="file-name" id="fileName">No file selected</span>
+            <span id="fileSize">–</span>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-bg">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-label">
+              <span id="progressText">Idle</span>
+              <span id="progressPercent">0%</span>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" id="btnUpload">Upload</button>
+            <button class="btn btn-primary" id="btnStart">Start update</button>
+          </div>
+
+          <div class="status-text" id="uploadStatus"></div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Activity log</div>
+              <div class="panel-caption">Messages from ESP32 &amp; bootloader</div>
+            </div>
+            <div class="status-pill" id="statusChip">Idle</div>
+          </div>
+
+          <div class="log-head">
+            <span>Log output</span>
+            <button class="btn" id="btnClear" style="padding:4px 10px;font-size:.75rem;">Clear</button>
+          </div>
+          <div id="log"></div>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        STM32 Firmware OTA • Use only on trusted networks. Do not power off during update.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fwInput        = document.getElementById('fwFile');
+    const uploadBox      = document.getElementById('uploadBox');
+    const uploadIcon     = document.querySelector('.upload-icon');
+    const uploadFileLabel= document.getElementById('uploadFileLabel');
+    const fileNameEl     = document.getElementById('fileName');
+    const fileSizeEl     = document.getElementById('fileSize');
+    const uploadStatus   = document.getElementById('uploadStatus');
+    const logEl          = document.getElementById('log');
+    const statusChip     = document.getElementById('statusChip');
+    const progressFill   = document.getElementById('progressFill');
+    const progressText   = document.getElementById('progressText');
+    const progressPercent= document.getElementById('progressPercent');
+
+    let selectedFile = null;
+
+    function setStatusChip(state, text){
+      statusChip.textContent = text;
+      statusChip.classList.remove('running','ok','err');
+      if(state) statusChip.classList.add(state);
+    }
+
+    function setProgress(pct, text){
+      progressFill.style.width = pct + '%';
+      progressPercent.textContent = pct.toFixed(0) + '%';
+      if(text) progressText.textContent = text;
+    }
+
+    function addLog(msg){
+      const t = new Date().toLocaleTimeString();
+      logEl.textContent += `[${t}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function humanSize(bytes){
+      if(!bytes && bytes !== 0) return '–';
+      const units = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(bytes)/Math.log(1024));
+      return (bytes/Math.pow(1024,i)).toFixed(1) + ' ' + units[i];
+    }
+
+    function setStatusMessage(text, isError=false){
+      uploadStatus.textContent = text;
+      uploadStatus.classList.toggle('error', !!isError);
+    }
+
+    function updateFileLabels(){
+      if(!selectedFile){
+        uploadBox.classList.remove('has-file');
+        uploadIcon.classList.remove('upload-icon-file');
+        uploadIcon.textContent = '⬆';
+
+        uploadFileLabel.textContent = 'No file selected';
+        fileNameEl.textContent = 'No file selected';
+        fileSizeEl.textContent = '–';
+        return;
+      }
+
+      const sizeText = humanSize(selectedFile.size);
+
+      uploadBox.classList.add('has-file');
+      uploadIcon.classList.add('upload-icon-file');
+      uploadIcon.textContent = 'BIN';
+
+      uploadFileLabel.innerHTML = `<strong>${selectedFile.name}</strong> · ${sizeText}`;
+      fileNameEl.textContent = selectedFile.name;
+      fileSizeEl.textContent = sizeText;
+    }
+
+    // input file
+    fwInput.addEventListener('change', () => {
+      if(!fwInput.files || !fwInput.files[0]) return;
+      selectedFile = fwInput.files[0];
+      updateFileLabels();
+      setStatusMessage('');
+      addLog(`Selected file: ${selectedFile.name} (${selectedFile.size} bytes)`);
+    });
+
+    // drag & drop
+    uploadBox.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadBox.style.borderColor = 'var(--primary)';
+      uploadBox.style.background = '#f0fff7';
+    });
+    uploadBox.addEventListener('dragleave', e => {
+      e.preventDefault();
+      uploadBox.style.borderColor = '#d4dde8';
+      uploadBox.style.background = 'linear-gradient(145deg,#ffffff,#f7fafc)';
+    });
+    uploadBox.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadBox.style.borderColor = '#d4dde8';
+      uploadBox.style.background = 'linear-gradient(145deg,#ffffff,#f7fafc)';
+      if(e.dataTransfer.files && e.dataTransfer.files[0]){
+        selectedFile = e.dataTransfer.files[0];
+        updateFileLabels();
+        setStatusMessage('');
+        addLog(`Selected file (drop): ${selectedFile.name} (${selectedFile.size} bytes)`);
+      }
+    });
+
+    // Upload ke ESP32
+    document.getElementById('btnUpload').addEventListener('click', async () => {
+      if(!selectedFile){
+        alert('Please select a firmware (.bin) file first.');
+        return;
+      }
+      setStatusChip('running','Uploading');
+      setProgress(15,'Uploading…');
+      setStatusMessage('Uploading…');
+
+      const form = new FormData();
+      form.append('file', selectedFile);
+
+      try{
+        const resp = await fetch('/upload', { method:'POST', body:form });
+        const txt = await resp.text();
+        addLog(`Upload response: ${resp.status} ${txt}`);
+        if(resp.ok){
+          setProgress(60,'Uploaded to ESP32');
+          setStatusMessage('Upload complete. Ready to start update.');
+          setStatusChip('ok','Uploaded');
+        }else{
+          setStatusMessage('Upload failed: ' + txt, true);
+          setStatusChip('err','Upload error');
+          setProgress(0,'Idle');
+        }
+      }catch(e){
+        addLog('Upload error: ' + e);
+        setStatusMessage('Upload error', true);
+        setStatusChip('err','Upload error');
+        setProgress(0,'Idle');
+      }
+    });
+
+    // Start flashing STM32
+    document.getElementById('btnStart').addEventListener('click', async () => {
+      addLog('Requesting STM32 update start…');
+      setStatusChip('running','Updating');
+      setProgress(80,'Flashing STM32…');
+      setStatusMessage('Updating STM32… please wait and do not power off.');
+
+      try{
+        const resp = await fetch('/start_update', { method:'POST' });
+        const txt = await resp.text();
+        const ok  = resp.ok;
+        addLog(`Start response: ${resp.status} ${txt}`);
+        setStatusMessage(txt, !ok);
+        if(ok){
+          setProgress(100,'Done');
+          setStatusChip('ok','Done');
+        }else{
+          setStatusChip('err','Update error');
+          setProgress(0,'Idle');
+        }
+      }catch(e){
+        addLog('Start update error: ' + e);
+        setStatusMessage('Start update error', true);
+        setStatusChip('err','Update error');
+        setProgress(0,'Idle');
+      }
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+      logEl.textContent = '';
+    });
+
+    // Tombol Setting → pindah ke setting.html
+    document.getElementById('btnSetting').addEventListener('click', () => {
+      window.location.href = 'setting.html';
+    });
+
+    // initial
+    updateFileLabels();
+    addLog('STM32 OTA UI loaded.');
+  </script>
+</body>
+</html>

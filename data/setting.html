@@ -1,0 +1,382 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>STM32 OTA – Settings</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <style>
+    :root{
+      --primary:#19c37d;
+      --primary-dark:#12a164;
+      --primary-soft:#d9fbe9;
+      --border:#d1d5db;
+      --bg:#e5e7eb;
+      --card-bg:rgba(255,255,255,0.86);
+      --text:#0f172a;
+      --muted:#6b7280;
+      --danger:#ef4444;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,#e0fbea 0,#e0f2fe 40%,#e5e7eb 100%);
+      color:var(--text);
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px 12px;
+    }
+
+    .card{
+      width:100%;
+      max-width:780px;
+      background:var(--card-bg);
+      border-radius:26px;
+      box-shadow:
+        0 28px 80px rgba(15,23,42,0.35),
+        0 0 0 1px rgba(148,163,184,0.35);
+      padding:26px 26px 22px;
+      backdrop-filter:blur(22px);
+      -webkit-backdrop-filter:blur(22px);
+    }
+
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:22px;
+      flex-wrap:wrap;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .logo{
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      padding:4px;
+      background:radial-gradient(circle at 30% 20%,#bbf7d0,#16a34a);
+      box-shadow:
+        0 10px 24px rgba(22,163,74,0.45),
+        0 0 0 1px rgba(22,163,74,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .logo svg{
+      width:30px;
+      height:30px;
+      display:block;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .title-main{
+      font-size:1.35rem;
+      font-weight:700;
+    }
+    .title-sub{
+      font-size:.85rem;
+      color:var(--muted);
+    }
+
+    .btn{
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:7px 14px;
+      font-size:.8rem;
+      cursor:pointer;
+      background:#ffffff;
+      color:#111827;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      transition:background .15s, box-shadow .15s, transform .05s;
+      text-decoration:none;
+    }
+    .btn:hover{
+      background:#f3faf7;
+      box-shadow:0 4px 12px rgba(15,23,42,0.12);
+    }
+    .btn:active{
+      transform:translateY(1px);
+      box-shadow:none;
+    }
+    .btn-primary{
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#ffffff;
+    }
+    .btn-primary:hover{
+      background:var(--primary-dark);
+    }
+    .btn[disabled]{
+      opacity:.55;
+      cursor:default;
+      box-shadow:none;
+    }
+
+    .content{
+      border-radius:20px;
+      border:1px solid var(--border);
+      padding:18px 16px 18px;
+      background:rgba(250,250,250,0.9);
+    }
+
+    .section-title{
+      font-size:.95rem;
+      font-weight:600;
+      margin-bottom:4px;
+    }
+    .section-caption{
+      font-size:.8rem;
+      color:var(--muted);
+      margin-bottom:12px;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px 16px;
+    }
+    @media(max-width:640px){
+      .form-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    .form-group{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:.85rem;
+    }
+    .form-label{
+      font-weight:500;
+    }
+    .form-hint{
+      font-size:.75rem;
+      color:var(--muted);
+    }
+    input, select{
+      border-radius:10px;
+      border:1px solid var(--border);
+      padding:7px 10px;
+      font-size:.85rem;
+      font-family:inherit;
+      outline:none;
+      background:#ffffff;
+      min-height:34px;
+    }
+    input:focus, select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 1px rgba(25,195,125,0.4);
+    }
+
+    .btn-row{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .status-text{
+      margin-top:8px;
+      font-size:.8rem;
+      color:var(--muted);
+    }
+    .status-text.ok{
+      color:var(--primary-dark);
+      font-weight:500;
+    }
+    .status-text.err{
+      color:#b91c1c;
+      font-weight:500;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <rect x="8" y="8" width="48" height="48" rx="14" fill="#22c55e"/>
+              <rect x="20" y="20" width="24" height="24" rx="6" fill="#f9fafb"/>
+              <rect x="24" y="24" width="16" height="16" rx="3" fill="#22c55e"/>
+              <path d="M32 19 L28 15 L30 15 L30 11 L34 11 L34 15 L36 15 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+              <path d="M32 45 L36 49 L34 49 L34 53 L30 53 L30 49 L28 49 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+              <rect x="14" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="14" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+            </svg>
+          </div>
+          <div class="title">
+            <div class="title-main">STM32 OTA</div>
+            <div class="title-sub">Wi-Fi &amp; device settings</div>
+          </div>
+        </div>
+
+        <!-- Back ke halaman OTA -->
+        <a href="index.html" class="btn">
+          ← Back to OTA
+        </a>
+      </div>
+
+      <div class="content">
+        <div class="section-title">Device &amp; Wi-Fi configuration</div>
+        <div class="section-caption">
+          Set device name, Wi-Fi mode, and credentials for Access Point and Station.
+        </div>
+
+        <form id="settingsForm">
+          <div class="form-grid">
+            <!-- Device name -->
+            <div class="form-group">
+              <label class="form-label" for="deviceName">Device name</label>
+              <input id="deviceName" name="deviceName" type="text" placeholder="e.g. STM32-Bridge-01">
+              <div class="form-hint">Nama yang muncul di UI atau hotspot.</div>
+            </div>
+
+            <!-- Wi-Fi mode -->
+            <div class="form-group">
+              <label class="form-label" for="wifiMode">Wi-Fi mode</label>
+              <select id="wifiMode" name="wifiMode">
+                <option value="ap">Access Point (AP)</option>
+                <option value="sta">Station (STA)</option>
+                <option value="apsta">AP + Station</option>
+              </select>
+              <div class="form-hint">Pilih mode operasi Wi-Fi ESP32.</div>
+            </div>
+
+            <!-- AP SSID -->
+            <div class="form-group">
+              <label class="form-label" for="apSsid">SSID Access Point</label>
+              <input id="apSsid" name="apSsid" type="text" placeholder="e.g. STM32_OTA_AP">
+              <div class="form-hint">Nama hotspot yang disiarkan oleh ESP32.</div>
+            </div>
+
+            <!-- AP Password -->
+            <div class="form-group">
+              <label class="form-label" for="apPass">Password Access Point</label>
+              <input id="apPass" name="apPass" type="password" placeholder="min. 8 characters">
+              <div class="form-hint">Kosongkan jika ingin open AP (tidak disarankan).</div>
+            </div>
+
+            <!-- Station SSID -->
+            <div class="form-group">
+              <label class="form-label" for="staSsid">SSID Station</label>
+              <input id="staSsid" name="staSsid" type="text" placeholder="Wi-Fi router SSID">
+              <div class="form-hint">Nama Wi-Fi yang akan dihubungkan oleh ESP32.</div>
+            </div>
+
+            <!-- Station Password -->
+            <div class="form-group">
+              <label class="form-label" for="staPass">Password Station</label>
+              <input id="staPass" name="staPass" type="password" placeholder="Wi-Fi password">
+              <div class="form-hint">Password Wi-Fi router.</div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="btnSave">Save settings</button>
+          </div>
+
+          <div class="status-text" id="statusText"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form       = document.getElementById('settingsForm');
+    const statusText = document.getElementById('statusText');
+    const btnSave    = document.getElementById('btnSave');
+
+    function setStatus(msg, type){
+      statusText.textContent = msg || '';
+      statusText.classList.remove('ok','err');
+      if(type) statusText.classList.add(type);
+    }
+
+    // Opsional: load konfigurasi awal dari ESP32
+    async function loadSettings(){
+      try{
+        const resp = await fetch('/settings');
+        if(!resp.ok) return;
+        const data = await resp.json();
+
+        if(data.deviceName) document.getElementById('deviceName').value = data.deviceName;
+        if(data.wifiMode) document.getElementById('wifiMode').value = data.wifiMode;
+        if(data.apSsid) document.getElementById('apSsid').value = data.apSsid;
+        if(data.apPass) document.getElementById('apPass').value = data.apPass;
+        if(data.staSsid) document.getElementById('staSsid').value = data.staSsid;
+        if(data.staPass) document.getElementById('staPass').value = data.staPass;
+      }catch(e){
+        // boleh diabaikan, hanya gagal load awal
+        console.log('Failed to load settings:', e);
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setStatus('Saving settings…', null);
+      btnSave.disabled = true;
+
+      const payload = {
+        deviceName: document.getElementById('deviceName').value.trim(),
+        wifiMode:   document.getElementById('wifiMode').value,
+        apSsid:     document.getElementById('apSsid').value.trim(),
+        apPass:     document.getElementById('apPass').value,
+        staSsid:    document.getElementById('staSsid').value.trim(),
+        staPass:    document.getElementById('staPass').value
+      };
+
+      try{
+        const resp = await fetch('/settings', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const txt = await resp.text();
+        if(resp.ok){
+          setStatus(txt || 'Settings saved successfully.', 'ok');
+        }else{
+          setStatus(txt || 'Failed to save settings.', 'err');
+        }
+      }catch(err){
+        console.error(err);
+        setStatus('Error while saving settings.', 'err');
+      }finally{
+        btnSave.disabled = false;
+      }
+    });
+
+    // initial
+    loadSettings();
+  </script>
+</body>
+</html>
+ 
