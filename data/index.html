@@ -509,28 +509,36 @@
     const progressText   = document.getElementById('progressText');
     const progressPercent= document.getElementById('progressPercent');
 
-    let selectedFile = null;
-
-    function setStatusChip(state, text){
-      statusChip.textContent = text;
-      statusChip.classList.remove('running','ok','err');
-      if(state) statusChip.classList.add(state);
-    }
-
-    function setProgress(pct, text){
-      progressFill.style.width = pct + '%';
-      progressPercent.textContent = pct.toFixed(0) + '%';
-      if(text) progressText.textContent = text;
-    }
+    let selectedFile      = null;
+    let flashStatusTimer  = null;   // 🔥 poll timer
 
     function addLog(msg){
-      const t = new Date().toLocaleTimeString();
-      logEl.textContent += `[${t}] ${msg}\n`;
+      const now = new Date();
+      const ts = now.toLocaleTimeString();
+      const line = document.createElement('div');
+      line.textContent = `[${ts}] ${msg}`;
+      logEl.appendChild(line);
       logEl.scrollTop = logEl.scrollHeight;
     }
 
+    function setStatusChip(state, text){
+      statusChip.textContent = text;
+      statusChip.className = 'status-pill';
+      if(state === 'ok') statusChip.classList.add('status-ok');
+      else if(state === 'err') statusChip.classList.add('status-err');
+      else if(state === 'running') statusChip.classList.add('status-running');
+    }
+
+    function setProgress(percent, label){
+      if (percent < 0) percent = 0;
+      if (percent > 100) percent = 100;
+      progressFill.style.width   = percent + '%';
+      progressPercent.textContent= percent + '%';
+      if (label) progressText.textContent = label;
+    }
+
     function humanSize(bytes){
-      if(!bytes && bytes !== 0) return '–';
+      if(bytes === 0) return '0 B';
       const units = ['B','KB','MB','GB'];
       const i = Math.floor(Math.log(bytes)/Math.log(1024));
       return (bytes/Math.pow(1024,i)).toFixed(1) + ' ' + units[i];
@@ -564,31 +572,59 @@
       fileSizeEl.textContent = sizeText;
     }
 
-    // input file
-    fwInput.addEventListener('change', () => {
-      if(!fwInput.files || !fwInput.files[0]) return;
-      selectedFile = fwInput.files[0];
-      updateFileLabels();
-      setStatusMessage('');
-      addLog(`Selected file: ${selectedFile.name} (${selectedFile.size} bytes)`);
+    // 🔥 Poll status from ESP32
+    async function pollFlashStatus() {
+      try {
+        const resp = await fetch('/flash_status');
+        if (!resp.ok) return;
+        const st = await resp.json();
+
+        const pct = typeof st.percent === 'number' ? st.percent : 0;
+
+        if (st.running) {
+          setProgress(pct, 'Flashing…');
+          setStatusChip('running', 'Updating');
+        }
+
+        if (st.done) {
+          // stop polling
+          if (flashStatusTimer) {
+            clearInterval(flashStatusTimer);
+            flashStatusTimer = null;
+          }
+
+          if (st.success) {
+            setProgress(100, 'Update finished');
+            setStatusChip('ok', 'Done');
+            setStatusMessage('Flashing finished successfully.');
+            addLog('Flashing finished successfully.');
+          } else {
+            setStatusChip('err', 'Update error');
+            setProgress(pct, 'Update error');
+            setStatusMessage('Flashing failed. See log for details.', true);
+            addLog('Flashing failed.');
+          }
+        }
+      } catch (e) {
+        addLog('Status poll error: ' + e);
+      }
+    }
+
+    // Drag & drop
+    uploadBox.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadBox.classList.add('dragover');
     });
 
-    // drag & drop
-    uploadBox.addEventListener('dragover', e => {
+    uploadBox.addEventListener('dragleave', (e) => {
       e.preventDefault();
-      uploadBox.style.borderColor = 'var(--primary)';
-      uploadBox.style.background = '#f0fff7';
+      uploadBox.classList.remove('dragover');
     });
-    uploadBox.addEventListener('dragleave', e => {
+
+    uploadBox.addEventListener('drop', (e) => {
       e.preventDefault();
-      uploadBox.style.borderColor = '#d4dde8';
-      uploadBox.style.background = 'linear-gradient(145deg,#ffffff,#f7fafc)';
-    });
-    uploadBox.addEventListener('drop', e => {
-      e.preventDefault();
-      uploadBox.style.borderColor = '#d4dde8';
-      uploadBox.style.background = 'linear-gradient(145deg,#ffffff,#f7fafc)';
-      if(e.dataTransfer.files && e.dataTransfer.files[0]){
+      uploadBox.classList.remove('dragover');
+      if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
         selectedFile = e.dataTransfer.files[0];
         updateFileLabels();
         setStatusMessage('');
@@ -596,65 +632,101 @@
       }
     });
 
+    // File input
+    fwInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if(files && files.length > 0){
+        selectedFile = files[0];
+      } else {
+        selectedFile = null;
+      }
+      updateFileLabels();
+      setStatusMessage('');
+      if(selectedFile){
+        addLog(`Selected file: ${selectedFile.name} (${selectedFile.size} bytes)`);
+      }
+    });
+
     // Upload ke ESP32
     document.getElementById('btnUpload').addEventListener('click', async () => {
-      if(!selectedFile){
+      if (!selectedFile) {
         alert('Please select a firmware (.bin) file first.');
         return;
       }
-      setStatusChip('running','Uploading');
-      setProgress(15,'Uploading…');
+
+      // Status awal upload
+      setStatusChip('running', 'Uploading');
+      setProgress(0, 'Uploading…');
       setStatusMessage('Uploading…');
 
       const form = new FormData();
       form.append('file', selectedFile);
 
-      try{
-        const resp = await fetch('/upload', { method:'POST', body:form });
-        const txt = await resp.text();
-        addLog(`Upload response: ${resp.status} ${txt}`);
-        if(resp.ok){
-          setProgress(60,'Uploaded to ESP32');
+      try {
+        const resp = await fetch('/upload_bin', { method: 'POST', body: form });
+        const txt  = await resp.text();
+
+        addLog(`[UPLOAD] Response: ${resp.status} ${txt}`);
+
+        if (resp.ok) {
+
+          // === PROGRESS 100% saat upload selesai ===
+          setProgress(100, 'Upload finished');
+
           setStatusMessage('Upload complete. Ready to start update.');
-          setStatusChip('ok','Uploaded');
-        }else{
+          setStatusChip('ok', 'Uploaded');
+
+          // === LOG TAMBAHAN ===
+          addLog('[UPLOAD] Upload finished successfully.');
+
+        } else {
           setStatusMessage('Upload failed: ' + txt, true);
-          setStatusChip('err','Upload error');
-          setProgress(0,'Idle');
+          setStatusChip('err', 'Upload error');
+          setProgress(0, 'Idle');
         }
-      }catch(e){
-        addLog('Upload error: ' + e);
+
+      } catch (e) {
+        addLog('[UPLOAD] Error: ' + e);
         setStatusMessage('Upload error', true);
-        setStatusChip('err','Upload error');
-        setProgress(0,'Idle');
+        setStatusChip('err', 'Upload error');
+        setProgress(0, 'Idle');
       }
     });
 
     // Start flashing STM32
     document.getElementById('btnStart').addEventListener('click', async () => {
       addLog('Requesting STM32 update start…');
-      setStatusChip('running','Updating');
-      setProgress(80,'Flashing STM32…');
+      setStatusChip('running', 'Updating');
+
+      // Reset progress untuk proses flashing
+      setProgress(0, 'Preparing to flash…');
       setStatusMessage('Updating STM32… please wait and do not power off.');
 
-      try{
-        const resp = await fetch('/start_update', { method:'POST' });
-        const txt = await resp.text();
-        const ok  = resp.ok;
+      try {
+        // NOTE: no body, simple POST
+        const resp = await fetch('/flash', { method: 'POST' });
+        const txt  = await resp.text();
+
         addLog(`Start response: ${resp.status} ${txt}`);
-        setStatusMessage(txt, !ok);
-        if(ok){
-          setProgress(100,'Done');
-          setStatusChip('ok','Done');
-        }else{
-          setStatusChip('err','Update error');
-          setProgress(0,'Idle');
+
+        if (!resp.ok) {
+          setStatusChip('err', 'Update error');
+          setProgress(0, 'Idle');
+          setStatusMessage('Failed to start flashing', true);
+          return;
         }
-      }catch(e){
+
+        // 🔁 Mulai polling status
+        if (flashStatusTimer) {
+          clearInterval(flashStatusTimer);
+        }
+        flashStatusTimer = setInterval(pollFlashStatus, 500);
+
+      } catch (e) {
         addLog('Start update error: ' + e);
         setStatusMessage('Start update error', true);
-        setStatusChip('err','Update error');
-        setProgress(0,'Idle');
+        setStatusChip('err', 'Update error');
+        setProgress(0, 'Idle');
       }
     });
 
