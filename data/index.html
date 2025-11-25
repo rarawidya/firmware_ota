@@ -331,7 +331,7 @@
       white-space:pre-wrap;
       background:#f9fafb;
       padding:10px;
-      height:190px;
+      height:260px;
       overflow:auto;
       border-radius:12px;
       border:1px solid var(--border);
@@ -396,6 +396,31 @@
       color:var(--muted);
       text-align:center;
     }
+
+    .md5-wrap{
+      font-size:.75rem;
+      color:var(--muted);
+      background:#f9fafb;
+      border-radius:8px;
+      padding:6px 8px;
+      margin-bottom:10px;
+    }
+    .md5-row{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:2px;
+      align-items:center;
+    }
+    .md5-row:last-child{
+      margin-bottom:0;
+    }
+    .md5-row code{
+      font-family:ui-monospace,Menlo,Consolas,monospace;
+      font-size:.72rem;
+      color:#111827;
+      word-break:break-all;
+    }
   </style>
 </head>
 <body>
@@ -453,6 +478,18 @@
             <span id="fileSize">–</span>
           </div>
 
+          <!-- 🔥 MD5 info -->
+          <div class="md5-wrap">
+            <div class="md5-row">
+              <span>Uploaded firmware MD5:</span>
+              <code id="uploadedMd5">–</code>
+            </div>
+            <div class="md5-row">
+              <span>Flashed firmware MD5:</span>
+              <code id="flashedMd5">–</code>
+            </div>
+          </div>
+
           <div class="progress-wrap">
             <div class="progress-bg">
               <div class="progress-fill" id="progressFill"></div>
@@ -508,9 +545,11 @@
     const progressFill   = document.getElementById('progressFill');
     const progressText   = document.getElementById('progressText');
     const progressPercent= document.getElementById('progressPercent');
+    const uploadedMd5El  = document.getElementById('uploadedMd5');
+    const flashedMd5El   = document.getElementById('flashedMd5');
 
     let selectedFile      = null;
-    let flashStatusTimer  = null;   // 🔥 poll timer
+    let flashStatusTimer  = null;   
 
     function addLog(msg){
       const now = new Date();
@@ -523,10 +562,16 @@
 
     function setStatusChip(state, text){
       statusChip.textContent = text;
+      // reset to base class
       statusChip.className = 'status-pill';
-      if(state === 'ok') statusChip.classList.add('status-ok');
-      else if(state === 'err') statusChip.classList.add('status-err');
-      else if(state === 'running') statusChip.classList.add('status-running');
+
+      if (state === 'ok') {
+        statusChip.classList.add('ok');
+      } else if (state === 'err') {
+        statusChip.classList.add('err');
+      } else if (state === 'running') {
+        statusChip.classList.add('running');
+      }
     }
 
     function setProgress(percent, label){
@@ -572,6 +617,16 @@
       fileSizeEl.textContent = sizeText;
     }
 
+    function updateMd5FromStatus(st){
+      if (st && typeof st.uploadedMd5 === 'string' && st.uploadedMd5.length > 0) {
+        uploadedMd5El.textContent = st.uploadedMd5;
+      }
+      if (st && typeof st.flashedMd5 === 'string' && st.flashedMd5.length > 0) {
+        flashedMd5El.textContent = st.flashedMd5;
+      }
+    }
+
+
     // 🔥 Poll status from ESP32
     async function pollFlashStatus() {
       try {
@@ -580,6 +635,8 @@
         const st = await resp.json();
 
         const pct = typeof st.percent === 'number' ? st.percent : 0;
+
+        updateMd5FromStatus(st);
 
         if (st.running) {
           setProgress(pct, 'Flashing…');
@@ -679,6 +736,16 @@
           // === LOG TAMBAHAN ===
           addLog('[UPLOAD] Upload finished successfully.');
 
+          // 🔥 Ambil MD5 uploaded dari ESP32
+          try {
+            const sResp = await fetch('/flash_status');
+            if (sResp.ok) {
+              const st = await sResp.json();
+              updateMd5FromStatus(st);
+            }
+          } catch (e) {
+            addLog('Fetch MD5 after upload error: ' + e);
+          }
         } else {
           setStatusMessage('Upload failed: ' + txt, true);
           setStatusChip('err', 'Upload error');
@@ -742,6 +809,19 @@
     // initial
     updateFileLabels();
     addLog('STM32 OTA UI loaded.');
+
+    // 🔥 Coba baca status awal (jika sudah pernah upload / flash sebelumnya)
+    (async () => {
+      try {
+        const resp = await fetch('/flash_status');
+        if (resp.ok) {
+          const st = await resp.json();
+          updateMd5FromStatus(st);
+        }
+      } catch (e) {
+        // silent
+      }
+    })();
   </script>
 </body>
 </html>

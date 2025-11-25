@@ -8,6 +8,7 @@
 #include <SPIFFS.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <MD5Builder.h>
 #include "stm32_uart_bootloader.h"
 
 // -------- CONFIG: change pins to match your board --------
@@ -37,6 +38,10 @@ volatile int  gFlashPercent = 0;
 
 TaskHandle_t gFlashTaskHandle = nullptr;
 
+// ---- MD5 info ----
+String gUploadedMD5;   // MD5 firmware.bin yang ada di SPIFFS (hasil upload)
+String gFlashedMD5;    // MD5 firmware yang DINYATAKAN sudah diflash (biasanya sama)
+
 // Helper for hardware control (BOOT0/NRST)
 static void stm_set_boot0(bool high) { digitalWrite(PIN_STM32_BOOT0, high ? HIGH : LOW); }
 static void stm_reset_pulse() { digitalWrite(PIN_STM32_NRST, LOW); delay(50); digitalWrite(PIN_STM32_NRST, HIGH); delay(50); }
@@ -55,6 +60,24 @@ static void exit_bootloader_hw() {
   delay(10);
   stm_reset_pulse();
   delay(50);
+}
+
+String computeFileMD5(const char *path) {
+  File f = SPIFFS.open(path, "r");
+  if (!f) {
+    Serial.printf("computeFileMD5: failed to open %s\n", path);
+    return "";
+  }
+
+  MD5Builder md5;
+  md5.begin();
+  md5.addStream(f, f.size());  // baca file langsung dari SPIFFS
+  md5.calculate();
+  f.close();
+
+  String hash = md5.toString(); // 32-char hex
+  hash.toLowerCase();
+  return hash;
 }
 
 // WiFi disconnected callback (simple reconnect)
@@ -157,7 +180,13 @@ finish:
   // Final status
   if (localOk) {
     gFlashPercent = 100;
+
+    // 🔥 Anggap "flashed" MD5 = firmware yang baru diupload
+    // (kalau mau lebih ketat, bisa tambah langkah read-back di kemudian hari)
+    gFlashedMD5 = gUploadedMD5;
+    Serial.printf("Flashed firmware MD5: %s\n", gFlashedMD5.c_str());
   }
+
   gFlashSuccess = localOk;
   gFlashDone    = true;
   gFlashRunning = false;
@@ -215,6 +244,10 @@ void handleFileUpload() {
     if (uploadFile) {
       uploadFile.close();
       Serial.printf("Upload finished (%u bytes)\n", (unsigned)upload.totalSize);
+
+      // 🔥 Hitung & simpan MD5 firmware yang baru diupload
+      gUploadedMD5 = computeFileMD5(FIRM_FILE);
+      Serial.printf("Uploaded firmware MD5: %s\n", gUploadedMD5.c_str());
     }
   } else if (upload.status == UPLOAD_FILE_ABORTED) {
     if (uploadFile) {
@@ -222,6 +255,7 @@ void handleFileUpload() {
       SPIFFS.remove(FIRM_FILE);
       Serial.println("Upload aborted");
     }
+    gUploadedMD5 = "";   // clear karena upload gagal
   }
 }
 
@@ -261,17 +295,20 @@ void handleFlashTrigger() {
 
 // ---------- Flash status endpoint (GET /flash_status) ----------
 void handleFlashStatus() {
-  StaticJsonDocument<128> doc;
+  StaticJsonDocument<256> doc;
   doc["running"] = gFlashRunning;
   doc["done"]    = gFlashDone;
   doc["success"] = gFlashSuccess;
   doc["percent"] = gFlashPercent;
 
+  // 🔥 Info MD5
+  doc["uploadedMd5"] = gUploadedMD5;
+  doc["flashedMd5"]  = gFlashedMD5;
+
   String out;
   serializeJson(doc, out);
   server.send(200, "application/json", out);
 }
-
 
 // ---------- Settings endpoints ----------
 // GET /settings  -> returns JSON with current prefs
