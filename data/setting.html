@@ -344,21 +344,7 @@
       setStatus('Saving settings…', null);
       btnSave.disabled = true;
 
-      const payload = {
-        deviceName: document.getElementById('deviceName').value.trim(),
-        wifiMode:   document.getElementById('wifiMode').value,
-        apSsid:     document.getElementById('apSsid').value.trim(),
-        apPass:     document.getElementById('apPass').value,
-        staSsid:    document.getElementById('staSsid').value.trim(),
-        staPass:    document.getElementById('staPass').value
-      };
-
-      try{
-        const resp = await fetch('/settings', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        });
+      
         const txt = await resp.text();
         if(resp.ok){
           setStatus(txt || 'Settings saved successfully.', 'ok');
