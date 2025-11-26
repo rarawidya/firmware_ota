@@ -344,7 +344,16 @@
       setStatus('Saving settings…', null);
       btnSave.disabled = true;
 
-      
+      const formData = new FormData(form);
+      const settings = Object.fromEntries(formData);
+
+      try {
+        const resp = await fetch('/settings', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(settings)
+        });
+
         const txt = await resp.text();
         if(resp.ok){
           setStatus(txt || 'Settings saved successfully.', 'ok');
@@ -364,4 +373,4 @@
   </script>
 </body>
 </html>
- 
+

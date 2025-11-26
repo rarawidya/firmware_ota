@@ -16,13 +16,25 @@ def send_settings_to_esp32(device_name, wifi_mode, ap_ssid, ap_pass, sta_ssid, s
         ap_pass (str): AP Password
         sta_ssid (str): Station SSID
         sta_pass (str): Station Password
-        ip (str): ESP32 IP address (default: 192.168.4.1)
+        ip (str): ESP32 IP address or hostname (default: 192.168.4.1)
         port (int): ESP32 port (default: 80)
     """
 
     # Use default values if ip or port are None, empty string, or 0
     if not ip or ip == "":
         ip = "192.168.4.1"
+    else:
+        # Clean up the IP/hostname if it includes protocol or path
+        # Remove http:// or https:// prefix if present
+        if ip.startswith("http://"):
+            ip = ip[7:]  # Remove "http://"
+        elif ip.startswith("https://"):
+            ip = ip[8:]  # Remove "https://"
+
+        # Remove trailing slash if present
+        if ip.endswith("/"):
+            ip = ip[:-1]
+
     if not port or port == "" or port is None:
         port = 80
     else:
@@ -100,7 +112,7 @@ def main():
                        help="Station SSID (optional when -m=ap, required when -m=sta)")
     parser.add_argument("-stpwd", "--sta-pass", required=False,
                        help="Station Password (optional when -m=ap, required when -m=sta)")
-    parser.add_argument("--ip", default="", help="ESP32 IP address (default: 192.168.4.1 if empty)")
+    parser.add_argument("-i", "-ip", "--ip", default="", help="ESP32 IP address or hostname (default: 192.168.4.1 if empty)")
     parser.add_argument("--port", type=str, default="", help="ESP32 port (default: 80 if empty)")
 
     args = parser.parse_args()
