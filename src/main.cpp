@@ -154,7 +154,7 @@ void flashTask(void *param) {
     remaining -= r;
     Serial.printf("Wrote %u bytes to 0x%08X\n", (unsigned)r, (unsigned)(addr - r));
 
-    // 🔥 Update percent based on bytes written
+    // Update percent based on bytes written
     size_t written = total - remaining;
     if (total > 0) {
       gFlashPercent = (int)((written * 100) / total);
@@ -181,7 +181,7 @@ finish:
   if (localOk) {
     gFlashPercent = 100;
 
-    // 🔥 Anggap "flashed" MD5 = firmware yang baru diupload
+    // Anggap "flashed" MD5 = firmware yang baru diupload
     // (kalau mau lebih ketat, bisa tambah langkah read-back di kemudian hari)
     gFlashedMD5 = gUploadedMD5;
     Serial.printf("Flashed firmware MD5: %s\n", gFlashedMD5.c_str());
@@ -245,7 +245,7 @@ void handleFileUpload() {
       uploadFile.close();
       Serial.printf("Upload finished (%u bytes)\n", (unsigned)upload.totalSize);
 
-      // 🔥 Hitung & simpan MD5 firmware yang baru diupload
+      // Hitung & simpan MD5 firmware yang baru diupload
       gUploadedMD5 = computeFileMD5(FIRM_FILE);
       Serial.printf("Uploaded firmware MD5: %s\n", gUploadedMD5.c_str());
     }
@@ -301,7 +301,7 @@ void handleFlashStatus() {
   doc["success"] = gFlashSuccess;
   doc["percent"] = gFlashPercent;
 
-  // 🔥 Info MD5
+  // Info MD5
   doc["uploadedMd5"] = gUploadedMD5;
   doc["flashedMd5"]  = gFlashedMD5;
 
