@@ -7,7 +7,7 @@ import os
 
 def upload_flash_data_to_esp32(file_path, ip=None, port=None):
     """
-    Upload flashdata.bin to ESP32 device via HTTP API
+    Upload flashdata.bin to ESP32 device via HTTP API and trigger flash
 
     Args:
         file_path (str): Path to the flashdata.bin file to upload
@@ -44,19 +44,19 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
         print(f"Error: File '{file_path}' does not exist.")
         return False
 
-    # Construct the URL
-    url = f"http://{ip}:{port}/upload_bin"
+    # Construct the upload URL
+    upload_url = f"http://{ip}:{port}/upload_bin"
 
-    print(f"Uploading {file_path} to {url}")
+    print(f"Uploading {file_path} to {upload_url}")
 
     try:
         # Read the binary file and send it as form data
         with open(file_path, 'rb') as file:
             files = {'file': (os.path.basename(file_path), file, 'application/octet-stream')}
-            
+
             # Send the POST request with the file
             response = requests.post(
-                url,
+                upload_url,
                 files=files,
                 timeout=60  # Increase timeout for file uploads
             )
@@ -67,16 +67,45 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
             # Check if the request was successful
             if response.status_code == 200:
                 print("File uploaded successfully!")
-                return True
+
+                # Trigger the flash operation after successful upload
+                flash_url = f"http://{ip}:{port}/flash"
+                print(f"Triggering flash operation at {flash_url}")
+
+                try:
+                    # Make a POST request to the /flash endpoint, similar to the web interface
+                    flash_response = requests.post(flash_url, timeout=10)
+                    print(f"[FLASH] Response: {flash_response.status_code} {flash_response.text}")
+
+                    # Print flash response as mentioned in the requirement
+                    print(f"Flash response: {flash_response.text}")
+
+                    if flash_response.status_code == 200:
+                        print("Flash operation started successfully!")
+                        return True
+                    else:
+                        print(f"Failed to start flash operation. Status code: {flash_response.status_code}")
+                        return False
+
+                except requests.exceptions.ConnectionError:
+                    print(f"Error: Could not connect to {flash_url}. Please check if the ESP32 is accessible.")
+                    return False
+                except requests.exceptions.Timeout:
+                    print(f"Error: Request timed out while connecting to {flash_url}.")
+                    return False
+                except Exception as e:
+                    print(f"Unexpected error during flash operation: {str(e)}")
+                    return False
+
             else:
                 print(f"Failed to upload file. Status code: {response.status_code}")
                 return False
 
     except requests.exceptions.ConnectionError:
-        print(f"Error: Could not connect to {url}. Please check if the ESP32 is accessible.")
+        print(f"Error: Could not connect to {upload_url}. Please check if the ESP32 is accessible.")
         return False
     except requests.exceptions.Timeout:
-        print(f"Error: Request timed out while connecting to {url}. Upload may be taking longer than expected.")
+        print(f"Error: Request timed out while connecting to {upload_url}. Upload may be taking longer than expected.")
         return False
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
