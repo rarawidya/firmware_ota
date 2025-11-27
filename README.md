@@ -24,10 +24,10 @@ AP → STA
 python3 ./settings.py -d STM32Flasher -m sta -s SSID_WIFI -p PASSWORD_WIFI
 
 AP → AP 
-python3 ./settings.py -d STM32Flasher -m ap -s ESP32-OTA -p esp32pass -ip stm32flasher.local
+python3 ./settings.py -d STM32Flasher -m ap -s ESP32-OTA -p esp32pass -H stm32flasher.local
 
 STA → AP
-python3 ./settings.py -d STM32Flasher -m ap -s ESP32-OTA -p esp32pass  -ip stm32flasher.local
+python3 ./settings.py -d STM32Flasher -m ap -s ESP32-OTA -p esp32pass -H stm32flasher.local
 
 Flash Firmware
-python3 ./flash.py -f ./firmware.bin  -ip stm32flasher.local 
+python3 ./flash.py -f ./firmware.bin -H stm32flasher.local 

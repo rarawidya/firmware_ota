@@ -5,26 +5,29 @@ import requests
 import sys
 import os
 
-def upload_flash_data_to_esp32(file_path, ip=None, port=None):
+def upload_flash_data_to_esp32(file_path, host=None, port=None):
     """
     Upload flashdata.bin to ESP32 device via HTTP API and trigger flash
 
     Args:
         file_path (str): Path to the flashdata.bin file to upload
-        ip (str): ESP32 IP address or hostname (default: 192.168.4.1)
+        host (str): ESP32 IP address or hostname (default: 192.168.4.1)
         port (int): ESP32 port (default: 80)
     """
-    if not ip or ip == "":
-        ip = "192.168.4.1"
+
+    # Default hostname/IP
+    if not host or host == "":
+        host = "192.168.4.1"
     else:
-        if ip.startswith("http://"):
-            ip = ip[7:] 
-        elif ip.startswith("https://"):
-            ip = ip[8:]  
+        if host.startswith("http://"):
+            host = host[7:]
+        elif host.startswith("https://"):
+            host = host[8:]
 
-        if ip.endswith("/"):
-            ip = ip[:-1]
+        if host.endswith("/"):
+            host = host[:-1]
 
+    # Default port
     if not port or port == "" or port is None:
         port = 80
     else:
@@ -38,7 +41,7 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
         print(f"Error: File '{file_path}' does not exist.")
         return False
 
-    upload_url = f"http://{ip}:{port}/upload_bin"
+    upload_url = f"http://{host}:{port}/upload_bin"
 
     print(f"Uploading {file_path} to {upload_url}")
 
@@ -57,14 +60,12 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
             if response.status_code == 200:
                 print("File uploaded successfully!")
 
-                flash_url = f"http://{ip}:{port}/flash"
+                flash_url = f"http://{host}:{port}/flash"
                 print(f"Triggering flash operation at {flash_url}")
 
                 try:
                     flash_response = requests.post(flash_url, timeout=10)
                     print(f"[FLASH] Response: {flash_response.status_code} {flash_response.text}")
-
-                    print(f"Flash response: {flash_response.text}")
 
                     if flash_response.status_code == 200:
                         print("Flash operation started successfully!")
@@ -97,21 +98,24 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
         print(f"Unexpected error: {str(e)}")
         return False
 
+
 def main():
     parser = argparse.ArgumentParser(description="Upload flashdata.bin to ESP32 OTA device")
-    parser.add_argument("-f", "--file", required=True, help="Path to the flashdata.bin file to upload")
-    parser.add_argument("-i", "-ip", "--ip", default="", help="ESP32 IP address or hostname (default: 192.168.4.1 if empty)")
-    parser.add_argument("--port", type=str, default="", help="ESP32 port (default: 80 if empty)")
+    parser.add_argument("-f", "--file", required=True, help="Path to flashdata.bin file")
+    parser.add_argument("-H", "--host", default="", help="ESP32 hostname/IP (default: 192.168.4.1)")
+
+    parser.add_argument("--port", type=str, default="", help="ESP32 port (default: 80)")
 
     args = parser.parse_args()
 
     success = upload_flash_data_to_esp32(
         file_path=args.file,
-        ip=args.ip,
+        host=args.host,
         port=args.port
     )
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()
