@@ -23,7 +23,6 @@ bool STM32Bootloader::waitACK(unsigned long timeout) {
       int r = port.read();
       if (r == STM32_ACK) return true;
       if (r == STM32_NACK) return false;
-      // ignore other bytes
     }
     delay(1);
   }
@@ -57,19 +56,17 @@ bool STM32Bootloader::sendDataBlock(const uint8_t *data, uint16_t len) {
   for (uint16_t i = 0; i < len; ++i) { port.write(data[i]); ck ^= data[i]; }
   port.write(ck);
   port.flush();
-  // data write may take longer
   return waitACK(timeoutMs * 2);
 }
 
 bool STM32Bootloader::getID(uint16_t &id) {
   if (!sendCommand(STM32_CMD_GET_ID)) return false;
 
-  // read length then data
   unsigned long start = millis();
   while (!port.available() && (millis() - start < 300)) delay(1);
   if (!port.available()) return false;
 
-  int len = port.read(); // length (N)
+  int len = port.read(); 
   if (len < 0) return false;
   int readCount = len + 1;
   uint8_t buf[4] = {0};
@@ -87,11 +84,10 @@ bool STM32Bootloader::getID(uint16_t &id) {
 
 bool STM32Bootloader::eraseFull() {
   if (!sendCommand(STM32_CMD_EXT_ERASE)) return false;
-  // Extended erase: global erase pattern 0xFF 0xFF then checksum
   uint8_t seq[3] = { 0xFF, 0xFF, (uint8_t)(0xFF ^ 0xFF) };
   port.write(seq, 3);
   port.flush();
-  return waitACK(8000); // can take a while
+  return waitACK(8000); 
 }
 
 bool STM32Bootloader::writeMemory(uint32_t addr, const uint8_t *data, uint16_t len) {

@@ -239,7 +239,7 @@
           </div>
         </div>
 
-        <!-- Back ke halaman OTA -->
+        <!-- Back to OTA -->
         <a href="index.html" class="btn">
           ← Back to OTA
         </a>
@@ -320,7 +320,6 @@
       if(type) statusText.classList.add(type);
     }
 
-    // Opsional: load konfigurasi awal dari ESP32
     async function loadSettings(){
       try{
         const resp = await fetch('/settings');
@@ -334,7 +333,6 @@
         if(data.staSsid) document.getElementById('staSsid').value = data.staSsid;
         if(data.staPass) document.getElementById('staPass').value = data.staPass;
       }catch(e){
-        // boleh diabaikan, hanya gagal load awal
         console.log('Failed to load settings:', e);
       }
     }
@@ -368,7 +366,6 @@
       }
     });
 
-    // initial
     loadSettings();
   </script>
 </body>

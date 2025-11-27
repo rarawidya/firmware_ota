@@ -14,70 +14,56 @@ def upload_flash_data_to_esp32(file_path, ip=None, port=None):
         ip (str): ESP32 IP address or hostname (default: 192.168.4.1)
         port (int): ESP32 port (default: 80)
     """
-    # Use default values if ip or port are None, empty string, or 0
     if not ip or ip == "":
         ip = "192.168.4.1"
     else:
-        # Clean up the IP/hostname if it includes protocol or path
-        # Remove http:// or https:// prefix if present
         if ip.startswith("http://"):
-            ip = ip[7:]  # Remove "http://"
+            ip = ip[7:] 
         elif ip.startswith("https://"):
-            ip = ip[8:]  # Remove "https://"
+            ip = ip[8:]  
 
-        # Remove trailing slash if present
         if ip.endswith("/"):
             ip = ip[:-1]
 
     if not port or port == "" or port is None:
         port = 80
     else:
-        # Convert port to integer if it's provided as string
         try:
             port = int(port)
         except ValueError:
             print(f"Warning: Port '{port}' is not a valid integer. Using default: 80")
             port = 80
 
-    # Check if file exists
     if not os.path.exists(file_path):
         print(f"Error: File '{file_path}' does not exist.")
         return False
 
-    # Construct the upload URL
     upload_url = f"http://{ip}:{port}/upload_bin"
 
     print(f"Uploading {file_path} to {upload_url}")
 
     try:
-        # Read the binary file and send it as form data
         with open(file_path, 'rb') as file:
             files = {'file': (os.path.basename(file_path), file, 'application/octet-stream')}
 
-            # Send the POST request with the file
             response = requests.post(
                 upload_url,
                 files=files,
-                timeout=60  # Increase timeout for file uploads
+                timeout=60  
             )
 
-            # Log the response as per the web interface
             print(f"[UPLOAD] Response: {response.status_code} {response.text}")
 
-            # Check if the request was successful
             if response.status_code == 200:
                 print("File uploaded successfully!")
 
-                # Trigger the flash operation after successful upload
                 flash_url = f"http://{ip}:{port}/flash"
                 print(f"Triggering flash operation at {flash_url}")
 
                 try:
-                    # Make a POST request to the /flash endpoint, similar to the web interface
                     flash_response = requests.post(flash_url, timeout=10)
                     print(f"[FLASH] Response: {flash_response.status_code} {flash_response.text}")
 
-                    # Print flash response as mentioned in the requirement
                     print(f"Flash response: {flash_response.text}")
 
                     if flash_response.status_code == 200:

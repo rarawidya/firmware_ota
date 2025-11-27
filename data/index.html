@@ -49,7 +49,6 @@
       -webkit-backdrop-filter:blur(22px);
     }
 
-    /* Header */
     .header{
       display:flex;
       justify-content:space-between;
@@ -64,7 +63,6 @@
       gap:10px;
     }
 
-    /* LOGO STM32 OTA – hijau */
     .logo{
       width:40px;
       height:40px;
@@ -98,7 +96,6 @@
       color:var(--muted);
     }
 
-    /* Layout inside card */
     .grid{
       display:grid;
       grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);
@@ -133,7 +130,6 @@
       margin-top:2px;
     }
 
-    /* Upload box – modern look */
     .upload-box{
       margin-top:8px;
       margin-bottom:10px;
@@ -157,7 +153,6 @@
       transform:translateY(-1px);
     }
 
-    /* ICON DEFAULT: lingkaran hijau + panah */
     .upload-icon{
       width:34px;
       height:34px;
@@ -174,7 +169,6 @@
       transition:all .18s ease;
     }
 
-    /* ICON FILE: kotak dengan tulisan BIN dan sudut terlipat */
     .upload-icon-file{
       border-radius:9px;
       background:#ffffff;
@@ -212,7 +206,6 @@
       color:var(--muted);
     }
 
-    /* ketika file sudah dipilih → sembunyikan teks helper */
     .upload-box.has-file .upload-title,
     .upload-box.has-file .upload-sub{
       opacity:0;
@@ -249,7 +242,6 @@
       text-overflow:ellipsis;
     }
 
-    /* Progress */
     .progress-wrap{
       margin-bottom:8px;
     }
@@ -275,7 +267,6 @@
       margin-top:4px;
     }
 
-    /* Buttons */
     .btn-row{
       display:flex;
       justify-content:flex-end;
@@ -326,7 +317,6 @@
       background:#ecfdf3;
     }
 
-    /* Log */
     #log{
       white-space:pre-wrap;
       background:#f9fafb;
@@ -428,7 +418,6 @@
     <div class="card">
       <div class="header">
         <div class="brand">
-          <!-- LOGO HIJAU STM32 OTA (inline SVG) -->
           <div class="logo" aria-hidden="true">
             <svg viewBox="0 0 64 64">
               <rect x="8" y="8" width="48" height="48" rx="14" fill="#22c55e"/>
@@ -451,12 +440,10 @@
           </div>
         </div>
 
-        <!-- GANTI: indikator ESP32 online → tombol Setting -->
         <button class="btn btn-ghost-green" id="btnSetting">Settings</button>
       </div>
 
       <div class="grid">
-        <!-- LEFT PANEL -->
         <div class="panel">
           <div class="panel-header">
             <div>
@@ -478,7 +465,6 @@
             <span id="fileSize">–</span>
           </div>
 
-          <!-- 🔥 MD5 info -->
           <div class="md5-wrap">
             <div class="md5-row">
               <span>Uploaded firmware MD5:</span>
@@ -508,7 +494,6 @@
           <div class="status-text" id="uploadStatus"></div>
         </div>
 
-        <!-- RIGHT PANEL -->
         <div class="panel">
           <div class="panel-header">
             <div>
@@ -562,7 +547,6 @@
 
     function setStatusChip(state, text){
       statusChip.textContent = text;
-      // reset to base class
       statusChip.className = 'status-pill';
 
       if (state === 'ok') {
@@ -626,8 +610,6 @@
       }
     }
 
-
-    // Poll status from ESP32
     async function pollFlashStatus() {
       try {
         const resp = await fetch('/flash_status');
@@ -644,7 +626,6 @@
         }
 
         if (st.done) {
-          // stop polling
           if (flashStatusTimer) {
             clearInterval(flashStatusTimer);
             flashStatusTimer = null;
@@ -667,7 +648,6 @@
       }
     }
 
-    // Drag & drop
     uploadBox.addEventListener('dragover', (e) => {
       e.preventDefault();
       uploadBox.classList.add('dragover');
@@ -689,7 +669,6 @@
       }
     });
 
-    // File input
     fwInput.addEventListener('change', (e) => {
       const files = e.target.files;
       if(files && files.length > 0){
@@ -704,14 +683,13 @@
       }
     });
 
-    // Upload ke ESP32
+    // Upload firmware .bin to ESP32
     document.getElementById('btnUpload').addEventListener('click', async () => {
       if (!selectedFile) {
         alert('Please select a firmware (.bin) file first.');
         return;
       }
 
-      // Status awal upload
       setStatusChip('running', 'Uploading');
       setProgress(0, 'Uploading…');
       setStatusMessage('Uploading…');
@@ -726,17 +704,14 @@
         addLog(`[UPLOAD] Response: ${resp.status} ${txt}`);
 
         if (resp.ok) {
-
-          // === PROGRESS 100% saat upload selesai ===
           setProgress(100, 'Upload finished');
 
           setStatusMessage('Upload complete. Ready to start update.');
           setStatusChip('ok', 'Uploaded');
 
-          // === LOG TAMBAHAN ===
           addLog('[UPLOAD] Upload finished successfully.');
 
-          // 🔥 Ambil MD5 uploaded dari ESP32
+          // MD5 after upload
           try {
             const sResp = await fetch('/flash_status');
             if (sResp.ok) {
@@ -765,12 +740,10 @@
       addLog('Requesting STM32 update start…');
       setStatusChip('running', 'Updating');
 
-      // Reset progress untuk proses flashing
       setProgress(0, 'Preparing to flash…');
       setStatusMessage('Updating STM32… please wait and do not power off.');
 
       try {
-        // NOTE: no body, simple POST
         const resp = await fetch('/flash', { method: 'POST' });
         const txt  = await resp.text();
 
@@ -783,7 +756,6 @@
           return;
         }
 
-        // 🔁 Mulai polling status
         if (flashStatusTimer) {
           clearInterval(flashStatusTimer);
         }
@@ -801,16 +773,13 @@
       logEl.textContent = '';
     });
 
-    // Tombol Setting → pindah ke setting.html
     document.getElementById('btnSetting').addEventListener('click', () => {
       window.location.href = 'setting.html';
     });
 
-    // initial
     updateFileLabels();
     addLog('STM32 OTA UI loaded.');
 
-    // 🔥 Coba baca status awal (jika sudah pernah upload / flash sebelumnya)
     (async () => {
       try {
         const resp = await fetch('/flash_status');
@@ -819,7 +788,6 @@
           updateMd5FromStatus(st);
         }
       } catch (e) {
-        // silent
       }
     })();
   </script>

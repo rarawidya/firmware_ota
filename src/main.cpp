@@ -1,7 +1,3 @@
-// main.cpp  -- synchronized implementation for index.html & setting.html
-// Uses: WebServer (synchronous) + Preferences + SPIFFS
-// Requires: ArduinoJson library (install via Library Manager)
-
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
@@ -11,7 +7,6 @@
 #include <MD5Builder.h>
 #include "stm32_uart_bootloader.h"
 
-// -------- CONFIG: change pins to match your board --------
 #define PIN_UART_TX 6   // ESP32 -> STM32 RX
 #define PIN_UART_RX 7   // ESP32 <- STM32 TX
 
@@ -30,7 +25,7 @@ String deviceName, wifiMode, staSSID, staPasswd, apSSID, apPasswd;
 HardwareSerial SerialSTM(1);
 STM32Bootloader stmboot(SerialSTM, 1500);
 
-// ---- Flash progress state (for web UI polling) ----
+// ---- Flash progress  ----
 volatile bool gFlashRunning = false;
 volatile bool gFlashDone    = false;
 volatile bool gFlashSuccess = false;
@@ -38,11 +33,10 @@ volatile int  gFlashPercent = 0;
 
 TaskHandle_t gFlashTaskHandle = nullptr;
 
-// ---- MD5 info ----
-String gUploadedMD5;   // MD5 firmware.bin yang ada di SPIFFS (hasil upload)
-String gFlashedMD5;    // MD5 firmware yang DINYATAKAN sudah diflash (biasanya sama)
+// ---- MD5 ----
+String gUploadedMD5;   
+String gFlashedMD5;    
 
-// Helper for hardware control (BOOT0/NRST)
 static void stm_set_boot0(bool high) { digitalWrite(PIN_STM32_BOOT0, high ? HIGH : LOW); }
 static void stm_reset_pulse() { digitalWrite(PIN_STM32_NRST, LOW); delay(50); digitalWrite(PIN_STM32_NRST, HIGH); delay(50); }
 
@@ -71,23 +65,21 @@ String computeFileMD5(const char *path) {
 
   MD5Builder md5;
   md5.begin();
-  md5.addStream(f, f.size());  // baca file langsung dari SPIFFS
+  md5.addStream(f, f.size());  
   md5.calculate();
   f.close();
 
-  String hash = md5.toString(); // 32-char hex
+  String hash = md5.toString(); 
   hash.toLowerCase();
   return hash;
 }
 
-// WiFi disconnected callback (simple reconnect)
 void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
   Serial.println("WiFi disconnected, attempting reconnect...");
   WiFi.reconnect();
   delay(1000);
 }
 
-// Background task that actually flashes the STM32
 void flashTask(void *param) {
   bool ok = false;
 
@@ -107,7 +99,6 @@ void flashTask(void *param) {
   Serial.println("=== STM32 Flash sequence started ===");
   enter_bootloader_hw();
 
-  // Start UART with EVEN parity (8E1)
   SerialSTM.begin(STM32_BAUD, SERIAL_8E1, PIN_UART_RX, PIN_UART_TX);
   delay(50);
   stmboot.setTimeout(1800);
@@ -154,7 +145,6 @@ void flashTask(void *param) {
     remaining -= r;
     Serial.printf("Wrote %u bytes to 0x%08X\n", (unsigned)r, (unsigned)(addr - r));
 
-    // Update percent based on bytes written
     size_t written = total - remaining;
     if (total > 0) {
       gFlashPercent = (int)((written * 100) / total);
@@ -177,12 +167,9 @@ finish:
   Serial.printf("Flashing finished: %s\n", localOk ? "OK" : "FAIL");
   Serial.println("=== STM32 Flash sequence ended ===");
 
-  // Final status
   if (localOk) {
     gFlashPercent = 100;
 
-    // Anggap "flashed" MD5 = firmware yang baru diupload
-    // (kalau mau lebih ketat, bisa tambah langkah read-back di kemudian hari)
     gFlashedMD5 = gUploadedMD5;
     Serial.printf("Flashed firmware MD5: %s\n", gFlashedMD5.c_str());
   }
@@ -191,11 +178,10 @@ finish:
   gFlashDone    = true;
   gFlashRunning = false;
 
-  vTaskDelete(nullptr);   // end this task
+  vTaskDelete(nullptr);  
 }
 
 // ---------- Serve static files from SPIFFS ----------
-// root -> /index.html
 void handleRoot() {
   if (SPIFFS.exists("/index.html")) {
     File f = SPIFFS.open("/index.html", "r");
@@ -206,7 +192,6 @@ void handleRoot() {
   }
 }
 
-// serve setting.html
 void handleSettingsPage() {
   if (SPIFFS.exists("/setting.html")) {
     File f = SPIFFS.open("/setting.html", "r");
@@ -217,13 +202,11 @@ void handleSettingsPage() {
   }
 }
 
-// ---------- Upload handlers (multipart/form-data) ----------
-// Called when upload finished (endpoint completes)
+// ---------- Upload handlers ----------
 void handleUploadDone() {
   server.send(200, "text/plain", "OK");
 }
 
-// Upload streaming callback (writes chunks to SPIFFS)
 void handleFileUpload() {
   HTTPUpload &upload = server.upload();
   static File uploadFile;
@@ -237,7 +220,6 @@ void handleFileUpload() {
     }
   } else if (upload.status == UPLOAD_FILE_WRITE) {
     if (uploadFile) {
-      // upload.buf contains the received chunk
       uploadFile.write(upload.buf, upload.currentSize);
     }
   } else if (upload.status == UPLOAD_FILE_END) {
@@ -245,7 +227,6 @@ void handleFileUpload() {
       uploadFile.close();
       Serial.printf("Upload finished (%u bytes)\n", (unsigned)upload.totalSize);
 
-      // Hitung & simpan MD5 firmware yang baru diupload
       gUploadedMD5 = computeFileMD5(FIRM_FILE);
       Serial.printf("Uploaded firmware MD5: %s\n", gUploadedMD5.c_str());
     }
@@ -255,13 +236,12 @@ void handleFileUpload() {
       SPIFFS.remove(FIRM_FILE);
       Serial.println("Upload aborted");
     }
-    gUploadedMD5 = "";   // clear karena upload gagal
+    gUploadedMD5 = "";  
   }
 }
 
-// ---------- Flash trigger endpoint (POST /flash) ----------
+// ---------- Flash trigger endpoint ----------
 void handleFlashTrigger() {
-  // Prevent double-start
   if (gFlashRunning) {
     server.send(409, "text/plain", "Flashing already in progress");
     return;
@@ -272,28 +252,25 @@ void handleFlashTrigger() {
     return;
   }
 
-  // Reset state for new run
   gFlashRunning = true;
   gFlashDone    = false;
   gFlashSuccess = false;
   gFlashPercent = 0;
 
-  // Start flash task on core 1 (for example)
   xTaskCreatePinnedToCore(
       flashTask,
       "flashTask",
-      8192,          // stack size
+      8192,         
       nullptr,
-      1,             // priority
+      1,             
       &gFlashTaskHandle,
-      0              // core
+      0             
   );
 
-  // Immediate reply so UI can start polling
   server.send(200, "text/plain", "Flashing started");
 }
 
-// ---------- Flash status endpoint (GET /flash_status) ----------
+// ---------- Flash status endpoint ----------
 void handleFlashStatus() {
   StaticJsonDocument<256> doc;
   doc["running"] = gFlashRunning;
@@ -301,7 +278,6 @@ void handleFlashStatus() {
   doc["success"] = gFlashSuccess;
   doc["percent"] = gFlashPercent;
 
-  // Info MD5
   doc["uploadedMd5"] = gUploadedMD5;
   doc["flashedMd5"]  = gFlashedMD5;
 
@@ -311,11 +287,10 @@ void handleFlashStatus() {
 }
 
 // ---------- Settings endpoints ----------
-// GET /settings  -> returns JSON with current prefs
 void handleSettingsGet() {
   DynamicJsonDocument doc(512);
   doc["deviceName"] = prefs.getString("device_name", "STM32Flasher");
-  doc["wifiMode"]   = prefs.getString("wifi_mode", "ap"); // 'ap','sta','apsta'
+  doc["wifiMode"]   = prefs.getString("wifi_mode", "ap"); 
   doc["apSsid"]     = prefs.getString("ap_ssid", "ESP32-OTA");
   doc["apPass"]     = prefs.getString("ap_pass", "esp32pass");
   doc["staSsid"]    = prefs.getString("sta_ssid", "");
@@ -325,7 +300,6 @@ void handleSettingsGet() {
   server.send(200, "application/json", out);
 }
 
-// POST /settings  -> accepts JSON { deviceName, wifiMode, apSsid, apPass, staSsid, staPass }
 void handleSettingsPost() {
   if (server.arg("plain").length() == 0) {
     server.send(400, "text/plain", "Empty body");
@@ -350,7 +324,7 @@ void handleSettingsPost() {
   ESP.restart();
 }
 
-// ---------- AT command handling through USB Serial ----------
+// ---------- AT command - USB Serial ----------
 String serialLine = "";
 void handleATCommand(const String &cmd) {
   String s = cmd; s.trim();
@@ -410,22 +384,18 @@ void checkSerialInput() {
   }
 }
 
-// ---------- setup and loop ----------
 void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println("ESP32 STM32 OTA Bridge (synchronized)");
 
-  // mount SPIFFS
   if (!SPIFFS.begin(true)) {
     Serial.println("SPIFFS mount failed");
     while (1) delay(1000);
   }
 
-  // open Preferences
   prefs.begin(PREF_NS, false);
 
-  // load defaults
   deviceName = prefs.getString("device_name", "STM32Flasher");
   wifiMode   = prefs.getString("wifi_mode", "ap");
   staSSID    = prefs.getString("sta_ssid", "");
@@ -433,24 +403,20 @@ void setup() {
   apSSID     = prefs.getString("ap_ssid", "ESP32-OTA");
   apPasswd   = prefs.getString("ap_pass", "esp32pass");
 
-  // pins
   pinMode(PIN_STM32_BOOT0, OUTPUT);
   pinMode(PIN_STM32_NRST, OUTPUT);
   digitalWrite(PIN_STM32_BOOT0, LOW);
   digitalWrite(PIN_STM32_NRST, HIGH);
 
-  // WiFi mode
   if (wifiMode == "sta") {
     WiFi.onEvent(WiFiStationDisconnected, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     WiFi.begin(staSSID.c_str(), staPasswd.c_str());
     Serial.printf("Connecting to STA SSID: %s\n", staSSID.c_str());
   } else {
-    // AP (default) or AP+STA (treat as AP for simplicity)
     WiFi.softAP(apSSID.c_str(), apPasswd.c_str());
     Serial.printf("AP started: %s IP: %s\n", apSSID.c_str(), WiFi.softAPIP().toString().c_str());
   }
 
-  // mDNS: use deviceName
   String mdnsName = deviceName;
   mdnsName.replace(" ", "-");
   if (!MDNS.begin(mdnsName.c_str())) {
@@ -464,20 +430,16 @@ void setup() {
   server.on("/index.html", HTTP_GET, handleRoot);
   server.on("/setting.html", HTTP_GET, handleSettingsPage);
 
-  // File upload endpoint (multipart form) -> upload handler & done callback
+  // Upload & flash endpoints
   server.on("/upload_bin", HTTP_POST, handleUploadDone, handleFileUpload);
-
-  // Flash trigger endpoint (POST) – starts background flashing
   server.on("/flash", HTTP_POST, handleFlashTrigger);
-
-  // Flash status endpoint (GET) – polled by web UI
   server.on("/flash_status", HTTP_GET, handleFlashStatus);
 
   // Settings endpoints
   server.on("/settings", HTTP_GET, handleSettingsGet);
   server.on("/settings", HTTP_POST, handleSettingsPost);
 
-  // Simple health check
+  // Simple ping endpoint
   server.on("/ping", HTTP_GET, []() {
     server.send(200, "text/plain", "OK");
   });

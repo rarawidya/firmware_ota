@@ -20,43 +20,35 @@ def send_settings_to_esp32(device_name, wifi_mode, ap_ssid, ap_pass, sta_ssid, s
         port (int): ESP32 port (default: 80)
     """
 
-    # Use default values if ip or port are None, empty string, or 0
     if not ip or ip == "":
         ip = "192.168.4.1"
     else:
-        # Clean up the IP/hostname if it includes protocol or path
-        # Remove http:// or https:// prefix if present
         if ip.startswith("http://"):
-            ip = ip[7:]  # Remove "http://"
+            ip = ip[7:]  
         elif ip.startswith("https://"):
-            ip = ip[8:]  # Remove "https://"
+            ip = ip[8:]  
 
-        # Remove trailing slash if present
         if ip.endswith("/"):
             ip = ip[:-1]
 
     if not port or port == "" or port is None:
         port = 80
     else:
-        # Convert port to integer if it's provided as string
         try:
             port = int(port)
         except ValueError:
             print(f"Warning: Port '{port}' is not a valid integer. Using default: 80")
             port = 80
 
-    # Validate Wi-Fi mode
     if wifi_mode not in ['ap', 'sta']:
         raise ValueError("Wi-Fi mode must be either 'ap' or 'sta'")
 
-    # If wifi mode is AP, set station values to empty strings if not provided
     if wifi_mode == 'ap':
         if not sta_ssid or sta_ssid == "":
             sta_ssid = ""
         if not sta_pass or sta_pass == "":
             sta_pass = ""
 
-    # Prepare the payload
     payload = {
         "deviceName": device_name,
         "wifiMode": wifi_mode,
@@ -66,14 +58,12 @@ def send_settings_to_esp32(device_name, wifi_mode, ap_ssid, ap_pass, sta_ssid, s
         "staPass": sta_pass
     }
 
-    # Construct the URL
     url = f"http://{ip}:{port}/settings"
 
     print(f"Sending settings to {url}")
     print(f"Payload: {json.dumps(payload, indent=2)}")
 
     try:
-        # Send the POST request
         response = requests.post(
             url,
             json=payload,
@@ -81,7 +71,6 @@ def send_settings_to_esp32(device_name, wifi_mode, ap_ssid, ap_pass, sta_ssid, s
             timeout=10
         )
 
-        # Check if the request was successful
         if response.status_code == 200:
             print(f"Settings sent successfully! Response: {response.text}")
             return True
@@ -117,24 +106,18 @@ def main():
 
     args = parser.parse_args()
 
-    # Handle the case where -m=ap means -s and -p are AP settings
     if args.mode == 'ap':
         ap_ssid = args.ssid
         ap_pass = args.password
-        # For AP mode, if station SSID and password are not provided, use empty strings
         sta_ssid = args.sta_ssid if args.sta_ssid else ""
         sta_pass = args.sta_pass if args.sta_pass else ""
     else:
-        # For STA mode, -s and -p are station settings
         sta_ssid = args.ssid
         sta_pass = args.password
-        # For STA mode, use provided AP settings or defaults
-        # If -stssid and -stpwd are required for STA mode, we should validate this
         if args.sta_ssid is not None:
             sta_ssid = args.sta_ssid
         if args.sta_pass is not None:
             sta_pass = args.sta_pass
-        # Set default AP values for STA mode
         ap_ssid = "ESP32-OTA"
         ap_pass = "esp32pass"
 

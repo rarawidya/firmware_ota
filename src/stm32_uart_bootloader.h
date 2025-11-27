@@ -19,25 +19,18 @@ class STM32Bootloader {
 public:
     STM32Bootloader(HardwareSerial &port, unsigned long defaultTimeoutMs = 1000);
 
-    // Synchronize with the bootloader (send 0x7F)
     bool begin();
 
-    // Read device ID (returns true and sets id)
     bool getID(uint16_t &id);
 
-    // Full/Global erase
     bool eraseFull();
 
-    // Write up to 256 bytes to address (len <= 256)
     bool writeMemory(uint32_t addr, const uint8_t *data, uint16_t len);
 
-    // Read up to 256 bytes from address
     bool readMemory(uint32_t addr, uint8_t *data, uint16_t len);
 
-    // Jump to address (GO)
     bool go(uint32_t addr);
 
-    // Timeout adjustment
     void setTimeout(unsigned long ms) { timeoutMs = ms; }
 
 private:
