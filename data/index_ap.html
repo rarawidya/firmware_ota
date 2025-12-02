@@ -1,0 +1,337 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>STM32 OTA - Wi-Fi Connect</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <style>
+    :root{
+      --primary:#19c37d;
+      --primary-dark:#12a164;
+      --primary-soft:#d9fbe9;
+      --border:#d1d5db;
+      --bg:#e5e7eb;
+      --card-bg:rgba(255,255,255,0.86);
+      --text:#0f172a;
+      --muted:#6b7280;
+      --danger:#ef4444;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;
+      background:radial-gradient(circle at top left,#e0fbea 0,#e0f2fe 40%,#e5e7eb 100%);
+      color:var(--text);
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px 12px;
+    }
+
+    .card{
+      width:100%;
+      max-width:780px;
+      background:var(--card-bg);
+      border-radius:26px;
+      box-shadow:
+        0 28px 80px rgba(15,23,42,0.35),
+        0 0 0 1px rgba(148,163,184,0.35);
+      padding:26px 26px 22px;
+      backdrop-filter:blur(22px);
+    }
+
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:22px;
+      flex-wrap:wrap;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .logo{
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      padding:4px;
+      background:radial-gradient(circle at 30% 20%,#bbf7d0,#16a34a);
+      box-shadow:0 10px 24px rgba(22,163,74,0.45),
+                 0 0 0 1px rgba(22,163,74,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .logo svg{
+      width:30px;
+      height:30px;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+    }
+    .title-main{
+      font-size:1.35rem;
+      font-weight:700;
+    }
+    .title-sub{
+      font-size:.85rem;
+      color:var(--muted);
+    }
+
+    .btn{
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:7px 14px;
+      font-size:.8rem;
+      cursor:pointer;
+      background:#ffffff;
+      color:#111827;
+      display:inline-flex;
+      align-items:center;
+      transition:background .15s;
+      text-decoration:none;
+    }
+
+    .btn:hover{
+      background:#f3faf7;
+      box-shadow:0 4px 12px rgba(15,23,42,0.12);
+    }
+
+    .btn-primary{
+      background:var(--primary);
+      border-color:var(--primary);
+      color:white;
+    }
+    .btn-primary:hover{
+      background:var(--primary-dark);
+    }
+
+    .content{
+      border-radius:20px;
+      border:1px solid var(--border);
+      padding:22px;
+      background:rgba(250,250,250,0.9);
+    }
+
+    .section-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .section-title{
+      font-size:.95rem;
+      font-weight:600;
+    }
+    .section-caption{
+      font-size:.8rem;
+      color:var(--muted);
+      margin-bottom:14px;
+    }
+
+    .section-tag{
+      padding:3px 10px;
+      border-radius:999px;
+      background:var(--primary-soft);
+      color:var(--primary-dark);
+      font-size:.72rem;
+      font-weight:500;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:16px;
+      width:100%;
+    }
+
+    .form-group{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:.85rem;
+    }
+
+    .form-label{
+      font-weight:500;
+    }
+
+    .form-hint{
+      font-size:.75rem;
+      color:var(--muted);
+    }
+
+    .field-wrapper input{
+      width:100%;
+      border-radius:10px;
+      border:1px solid var(--border);
+      padding:9px 12px;
+      font-size:.85rem;
+      background:#ffffff;
+    }
+
+    .field-wrapper input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 1px rgba(25,195,125,0.4);
+    }
+
+    .btn-row{
+      display:flex;
+      justify-content:flex-end;
+      margin-top:12px;
+    }
+
+    .status-text{
+      margin-top:10px;
+      font-size:.8rem;
+      color:var(--muted);
+    }
+    .status-text.ok{
+      color:var(--primary-dark);
+      font-weight:600;
+    }
+    .status-text.err{
+      color:#b91c1c;
+      font-weight:600;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <rect x="8" y="8" width="48" height="48" rx="14" fill="#22c55e"/>
+              <rect x="20" y="20" width="24" height="24" rx="6" fill="#f9fafb"/>
+              <rect x="24" y="24" width="16" height="16" rx="3" fill="#22c55e"/>
+
+              <path d="M32 19 L28 15 L30 15 L30 11 L34 11 L34 15 L36 15 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+              <path d="M32 45 L36 49 L34 49 L34 53 L30 53 L30 49 L28 49 Z"
+                    fill="#bbf7d0" opacity="0.9"/>
+
+              <rect x="14" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="14" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="26" width="4" height="4" rx="1" fill="#bbf7d0"/>
+              <rect x="46" y="34" width="4" height="4" rx="1" fill="#bbf7d0"/>
+            </svg>
+          </div>
+
+          <div class="title">
+            <div class="title-main">STM32 OTA</div>
+            <div class="title-sub">Wi-Fi connection</div>
+          </div>
+        </div>
+
+        <a href="setting.html" class="btn">Settings</a>
+      </div>
+
+      <div class="content">
+        <div class="section-header">
+          <div class="section-title">Connect to Wi-Fi</div>
+          <div class="section-tag">Station mode</div>
+        </div>
+
+        <div class="section-caption">
+          Enter the Wi-Fi SSID and password to connect the ESP32 to the internet.
+        </div>
+
+        <form id="wifiForm">
+          <div class="form-grid">
+
+            <div class="form-group">
+              <label class="form-label" for="ssid">SSID</label>
+              <div class="field-wrapper">
+                <input id="ssid" name="ssid" type="text" placeholder="Wi-Fi network name">
+              </div>
+              <div class="form-hint">Name of the Wi-Fi network you want the ESP32 to join.</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="wifiPass">Password</label>
+              <div class="field-wrapper">
+                <input id="wifiPass" name="wifiPass" type="password" placeholder="Wi-Fi password">
+              </div>
+              <div class="form-hint">Password for the selected Wi-Fi network.</div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="btnConnect">
+              Connect
+            </button>
+          </div>
+
+          <div class="status-text" id="statusText"></div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+
+  <script>
+    const form       = document.getElementById('wifiForm');
+    const statusText = document.getElementById('statusText');
+    const btnConnect = document.getElementById('btnConnect');
+
+    function setStatus(msg, type){
+      statusText.textContent = msg || '';
+      statusText.classList.remove('ok','err');
+      if(type) statusText.classList.add(type);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setStatus('Connecting to Wi-Fi…');
+      btnConnect.disabled = true;
+
+      const payload = {
+        staSsid: document.getElementById('ssid').value,
+        staPass: document.getElementById('wifiPass').value
+      };
+
+      try {
+        const resp = await fetch('/update_sta', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        const txt = await resp.text();
+        if(resp.ok){
+          setStatus(txt || 'Wi-Fi connection request sent.', 'ok');
+        } else {
+          setStatus(txt || 'Failed to connect to Wi-Fi.', 'err');
+        }
+      } catch(err){
+        console.error(err);
+        setStatus('Error while connecting to Wi-Fi.', 'err');
+      } finally {
+        btnConnect.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -29,7 +29,8 @@ typedef struct {
 FlashStatus_t gFlashStatus = {false, false, false, 0};
 
 String deviceName, apPasswd, firmwareURL;
-bool waiting;
+uint8_t autoOffMinutes;
+bool waiting, autoOffOnSuccess;
 
 HardwareSerial SerialSTM(1);
 STM32Bootloader stmboot(SerialSTM, 1500);
@@ -41,6 +42,7 @@ Preferences prefs;
 TaskHandle_t StatusLEDTask_Handle;
 TaskHandle_t FlashStatusTask_Handle;
 TimerHandle_t otaButtonTimer_Handle;
+TimerHandle_t autoOffTimer_Handle;
 
 static void stm_set_boot0(bool high) { digitalWrite(PIN_STM32_BOOT0, high ? HIGH : LOW); }
 static void stm_reset_pulse() { digitalWrite(PIN_STM32_NRST, LOW); delay(50); digitalWrite(PIN_STM32_NRST, HIGH); delay(50); }
@@ -73,6 +75,7 @@ void handleLogEvents() {
     "Access-Control-Allow-Origin: *\r\n"
     "\r\n"
   );
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void sendSSE(const String &msg) {
@@ -80,6 +83,7 @@ void sendSSE(const String &msg) {
 
   sseClient.print("data: " + msg + "\n\n");
   sseClient.clear();
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void flashTask(void *param) {
@@ -175,6 +179,8 @@ finish:
   gFlashStatus.gFlashDone    = true;
   gFlashStatus.gFlashRunning = false;
 
+  if (localOk && autoOffMinutes) ESP.restart();
+
   vTaskDelete(nullptr);  
 }
 
@@ -205,6 +211,7 @@ void handleRoot() {
       server.send(404, "text/plain", "index_sta.html not found in SPIFFS");
     }
   }
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void handleUpdateSTA() {
@@ -226,9 +233,10 @@ void handleUpdateSTA() {
     WiFi.mode(WIFI_STA);
     WiFi.onEvent(WiFiStationDisconnected, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     WiFi.begin(doc["staSsid"].as<const char*>(), doc["staPass"].as<const char*>());
-    vTaskSuspend(StatusLEDTask_Handle);
+    vTaskDelete(StatusLEDTask_Handle);
     digitalWrite(STATUS_LED_PIN, HIGH);
   }
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void handleSettingsPage() {
@@ -239,10 +247,11 @@ void handleSettingsPage() {
   } else {
     server.send(404, "text/plain", "setting.html not found in SPIFFS");
   }
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void handleCheckFirmware() {
-  httpClient.begin("https://iqbiudnwcvcorliisbjk.supabase.co/functions/v1/swift-api");
+  httpClient.begin("http://192.168.137.1:5000/api/firmware/latest?device=stm32");
   int httpCode = httpClient.GET();
   if (httpCode != HTTP_CODE_OK) {
     server.send(500, "text/plain", "Failed to check firmware");
@@ -260,6 +269,7 @@ void handleCheckFirmware() {
     return;
   }
   firmwareURL = doc["firmware_url"].as<const char*>();
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 // ---------- Flash trigger endpoint ----------
@@ -306,6 +316,7 @@ void handleFlashTrigger() {
   );
 
   server.send(200, "text/plain", "Flashing started");
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 // ---------- Flash status endpoint ----------
@@ -319,6 +330,7 @@ void handleFlashStatus() {
   String out;
   serializeJson(doc, out);
   server.send(200, "application/json", out);
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 // ---------- Settings endpoints ----------
@@ -326,9 +338,12 @@ void handleSettingsGet() {
   JsonDocument doc;
   doc["deviceName"]     = prefs.getString("device_name", "ESP32-OTA");
   doc["apPass"]     = prefs.getString("ap_pass", "esp32pass");
+  doc["autoOffMinutes"]     = prefs.getString("off_minutes", "1");
+  doc["autoOffOnSuccess"]     = prefs.getBool("off_success", false);
   String out;
   serializeJson(doc, out);
   server.send(200, "application/json", out);
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void handleSettingsPost() {
@@ -346,8 +361,11 @@ void handleSettingsPost() {
 
   if (doc["deviceName"].is<const char*>())     prefs.putString("device_name", doc["deviceName"].as<const char*>());
   if (doc["apPass"].is<const char*>())     prefs.putString("ap_pass", doc["apPass"].as<const char*>());
+  if (doc["autoOffMinutes"].is<const char*>())     prefs.putString("off_minutes", doc["autoOffMinutes"].as<const char*>());
+  if (doc["autoOffOnSuccess"].is<bool>())     prefs.putBool("off_success", doc["autoOffOnSuccess"].as<bool>());
 
   server.send(200, "text/plain", "Settings saved");
+  xTimerReset(autoOffTimer_Handle, 0);
 }
 
 void StatusLEDTask(void *pvParameters) {
@@ -362,6 +380,10 @@ void StatusLEDTask(void *pvParameters) {
 void otaButtonTimerCallback(TimerHandle_t xTimer) {
   waiting = false;
   xTaskCreate(StatusLEDTask, "StatusLEDTask", 2048, NULL, 1, &StatusLEDTask_Handle);
+}
+
+void autoOffTimerCallback(TimerHandle_t xTimer) {
+  ESP.restart();
 }
 
 void setup() {
@@ -397,6 +419,11 @@ void setup() {
   prefs.begin(PREF_NS, false);
   deviceName = prefs.getString("device_name", "ESP32-OTA");
   apPasswd = prefs.getString("ap_pass", "esp32pass");
+  autoOffMinutes = prefs.getString("off_minutes", "1").toInt();
+  autoOffOnSuccess = prefs.getBool("off_success", false);
+  
+  autoOffTimer_Handle = xTimerCreate("autoOffTimer", autoOffMinutes * 60 * 1000 / portTICK_PERIOD_MS, pdFALSE, (void *)1, autoOffTimerCallback);
+  xTimerStart(autoOffTimer_Handle, portMAX_DELAY);
 
   pinMode(PIN_STM32_BOOT0, OUTPUT);
   pinMode(PIN_STM32_NRST, OUTPUT);

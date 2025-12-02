@@ -130,120 +130,60 @@
       margin-top:2px;
     }
 
-    .upload-box{
+    .fw-info-card{
       margin-top:8px;
-      margin-bottom:10px;
-      border-radius:18px;
-      border:1px dashed #d4dde8;
-      background:linear-gradient(145deg,#ffffff,#f7fafc);
-      padding:18px 12px;
-      text-align:center;
-      cursor:pointer;
-      transition:border .15s, box-shadow .15s, transform .05s, background .15s;
+      margin-bottom:16px;
+      border-radius:22px;
+      background:linear-gradient(145deg,#f9fafb,#eef2ff);
+      padding:20px 22px;
+      min-height:100px;
+      box-shadow:
+        inset 0 0 0 1px rgba(148,163,184,0.32),
+        0 14px 30px rgba(15,23,42,0.06);
       display:flex;
       flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:4px;
+      gap:16px;
     }
-    .upload-box:hover{
-      border-color:var(--primary);
-      background:linear-gradient(145deg,#ffffff,#ecfdf3);
-      box-shadow:0 10px 24px rgba(25,195,125,0.18);
-      transform:translateY(-1px);
+    .fw-info-row{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
     }
-
-    .upload-icon{
-      width:34px;
-      height:34px;
-      border-radius:999px;
-      border:1px solid rgba(25,195,125,0.6);
-      background:radial-gradient(circle at 30% 30%,#ffffff,#bbf7d0);
+    .fw-info-header{
       display:flex;
       align-items:center;
-      justify-content:center;
-      color:var(--primary-dark);
-      font-size:16px;
-      box-shadow:0 4px 10px rgba(25,195,125,0.45);
-      margin-bottom:4px;
-      transition:all .18s ease;
-    }
-
-    .upload-icon-file{
-      border-radius:9px;
-      background:#ffffff;
-      border:2px solid var(--primary-dark);
-      box-shadow:0 4px 10px rgba(25,195,125,0.25);
-      position:relative;
-      font-size:10px;
-      font-weight:700;
-      letter-spacing:0.5px;
-      color:var(--primary-dark);
-    }
-    .upload-icon-file::after{
-      content:"";
-      position:absolute;
-      top:5px;
-      right:5px;
-      width:9px;
-      height:9px;
-      background:linear-gradient(135deg,#e5f3eb,#ffffff);
-      border-left:1px solid rgba(15,23,42,0.08);
-      border-bottom:1px solid rgba(15,23,42,0.08);
-      clip-path:polygon(0 0,100% 0,100% 100%);
-    }
-
-    .upload-title,
-    .upload-sub{
-      transition:opacity .18s ease, margin .18s ease, height .18s ease;
-    }
-    .upload-title{
-      font-size:.9rem;
-      font-weight:500;
-    }
-    .upload-sub{
-      font-size:.8rem;
-      color:var(--muted);
-    }
-
-    .upload-box.has-file .upload-title,
-    .upload-box.has-file .upload-sub{
-      opacity:0;
-      height:0;
-      margin:0;
-      pointer-events:none;
-    }
-
-    .upload-file-label{
-      font-size:.8rem;
-      color:var(--muted);
-      margin-top:2px;
-    }
-    .upload-file-label strong{
-      color:var(--text);
-      font-weight:600;
-    }
-
-    input[type=file]{ display:none; }
-
-    .file-meta{
-      font-size:.8rem;
-      color:var(--muted);
-      display:flex;
-      justify-content:space-between;
       gap:8px;
-      margin-bottom:10px;
+      font-size:.82rem;
+      color:var(--muted);
     }
-    .file-name{
-      font-weight:500;
+    .fw-info-label{
+      color:inherit;
+    }
+    .fw-info-value{
+      font-weight:600;
       color:var(--text);
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow:ellipsis;
+      font-size:1.1rem;
+      letter-spacing:0.02em;
+    }
+    .fw-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:#d1d5db;
+      box-shadow:0 0 0 3px rgba(209,213,219,0.6);
+    }
+    .fw-dot-available{
+      background:var(--primary);
+      box-shadow:0 0 0 3px rgba(34,197,94,0.35);
+    }
+    .fw-separator{
+      height:1px;
+      background:linear-gradient(90deg,transparent,#d1d5db,transparent);
+      opacity:.9;
     }
 
     .progress-wrap{
-      margin-bottom:8px;
+      margin-bottom:12px;
     }
     .progress-bg{
       width:100%;
@@ -316,6 +256,13 @@
     .btn-ghost-green:hover{
       background:#ecfdf3;
     }
+    .btn-full{
+      width:100%;
+      justify-content:center;
+      padding:10px 16px;
+      font-size:.9rem;
+      margin-top:6px;
+    }
 
     #log{
       white-space:pre-wrap;
@@ -370,46 +317,11 @@
       background:#fef2f2;
     }
 
-    .status-text{
-      font-size:.8rem;
-      color:var(--muted);
-      margin-top:8px;
-    }
-    .status-text.error{
-      color:#b91c1c;
-      font-weight:500;
-    }
-
     .footer-note{
       margin-top:14px;
       font-size:.78rem;
       color:var(--muted);
       text-align:center;
-    }
-
-    .md5-wrap{
-      font-size:.75rem;
-      color:var(--muted);
-      background:#f9fafb;
-      border-radius:8px;
-      padding:6px 8px;
-      margin-bottom:10px;
-    }
-    .md5-row{
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      margin-bottom:2px;
-      align-items:center;
-    }
-    .md5-row:last-child{
-      margin-bottom:0;
-    }
-    .md5-row code{
-      font-family:ui-monospace,Menlo,Consolas,monospace;
-      font-size:.72rem;
-      color:#111827;
-      word-break:break-all;
     }
   </style>
 </head>
@@ -447,32 +359,18 @@
         <div class="panel">
           <div class="panel-header">
             <div>
-              <div class="panel-title">Upload firmware</div>
-              <div class="panel-caption">Select STM32 firmware file (.bin)</div>
+              <div class="panel-title">Download firmware</div>
+              <div class="panel-caption">ESP32 will download &amp; flash the latest firmware</div>
             </div>
           </div>
 
-          <label class="upload-box" id="uploadBox">
-            <div class="upload-icon">⬆</div>
-            <div class="upload-title">Click to select firmware</div>
-            <div class="upload-sub">or drop a .bin file here</div>
-            <div class="upload-file-label" id="uploadFileLabel">No file selected</div>
-            <input type="file" id="fwFile" accept=".bin">
-          </label>
-
-          <div class="file-meta">
-            <span class="file-name" id="fileName">No file selected</span>
-            <span id="fileSize">–</span>
-          </div>
-
-          <div class="md5-wrap">
-            <div class="md5-row">
-              <span>Uploaded firmware MD5:</span>
-              <code id="uploadedMd5">–</code>
-            </div>
-            <div class="md5-row">
-              <span>Flashed firmware MD5:</span>
-              <code id="flashedMd5">–</code>
+          <div class="fw-info-card">
+            <div class="fw-info-row">
+              <div class="fw-info-header">
+                <span class="fw-dot fw-dot-available"></span>
+                <span class="fw-info-label">Available firmware</span>
+              </div>
+              <div class="fw-info-value" id="availableFw">–</div>
             </div>
           </div>
 
@@ -486,12 +384,7 @@
             </div>
           </div>
 
-          <div class="btn-row">
-            <button class="btn" id="btnUpload">Upload</button>
-            <button class="btn btn-primary" id="btnStart">Start update</button>
-          </div>
-
-          <div class="status-text" id="uploadStatus"></div>
+          <button class="btn btn-primary btn-full" id="btnUpdate">Update firmware</button>
         </div>
 
         <div class="panel">
@@ -518,23 +411,19 @@
   </div>
 
   <script>
-    const fwInput        = document.getElementById('fwFile');
-    const uploadBox      = document.getElementById('uploadBox');
-    const uploadIcon     = document.querySelector('.upload-icon');
-    const uploadFileLabel= document.getElementById('uploadFileLabel');
-    const fileNameEl     = document.getElementById('fileName');
-    const fileSizeEl     = document.getElementById('fileSize');
-    const uploadStatus   = document.getElementById('uploadStatus');
     const logEl          = document.getElementById('log');
     const statusChip     = document.getElementById('statusChip');
     const progressFill   = document.getElementById('progressFill');
     const progressText   = document.getElementById('progressText');
     const progressPercent= document.getElementById('progressPercent');
-    const uploadedMd5El  = document.getElementById('uploadedMd5');
-    const flashedMd5El   = document.getElementById('flashedMd5');
+    const availableFwEl  = document.getElementById('availableFw');
 
-    let selectedFile      = null;
-    let flashStatusTimer  = null;   
+    let flashStatusTimer = null;
+
+    var logEventSource = new EventSource('/log_events');
+    logEventSource.onmessage = function(e) {
+      addLog(e.data);
+    };
 
     function addLog(msg){
       const now = new Date();
@@ -566,48 +455,8 @@
       if (label) progressText.textContent = label;
     }
 
-    function humanSize(bytes){
-      if(bytes === 0) return '0 B';
-      const units = ['B','KB','MB','GB'];
-      const i = Math.floor(Math.log(bytes)/Math.log(1024));
-      return (bytes/Math.pow(1024,i)).toFixed(1) + ' ' + units[i];
-    }
-
-    function setStatusMessage(text, isError=false){
-      uploadStatus.textContent = text;
-      uploadStatus.classList.toggle('error', !!isError);
-    }
-
-    function updateFileLabels(){
-      if(!selectedFile){
-        uploadBox.classList.remove('has-file');
-        uploadIcon.classList.remove('upload-icon-file');
-        uploadIcon.textContent = '⬆';
-
-        uploadFileLabel.textContent = 'No file selected';
-        fileNameEl.textContent = 'No file selected';
-        fileSizeEl.textContent = '–';
-        return;
-      }
-
-      const sizeText = humanSize(selectedFile.size);
-
-      uploadBox.classList.add('has-file');
-      uploadIcon.classList.add('upload-icon-file');
-      uploadIcon.textContent = 'BIN';
-
-      uploadFileLabel.innerHTML = `<strong>${selectedFile.name}</strong> · ${sizeText}`;
-      fileNameEl.textContent = selectedFile.name;
-      fileSizeEl.textContent = sizeText;
-    }
-
-    function updateMd5FromStatus(st){
-      if (st && typeof st.uploadedMd5 === 'string' && st.uploadedMd5.length > 0) {
-        uploadedMd5El.textContent = st.uploadedMd5;
-      }
-      if (st && typeof st.flashedMd5 === 'string' && st.flashedMd5.length > 0) {
-        flashedMd5El.textContent = st.flashedMd5;
-      }
+    function updateFwInfoFromStatus(st){
+      if(st.latest_version) availableFwEl.textContent = st.latest_version;
     }
 
     async function pollFlashStatus() {
@@ -618,10 +467,8 @@
 
         const pct = typeof st.percent === 'number' ? st.percent : 0;
 
-        updateMd5FromStatus(st);
-
         if (st.running) {
-          setProgress(pct, 'Flashing…');
+          setProgress(pct, 'Updating…');
           setStatusChip('running', 'Updating');
         }
 
@@ -634,12 +481,10 @@
           if (st.success) {
             setProgress(100, 'Update finished');
             setStatusChip('ok', 'Done');
-            setStatusMessage('Flashing finished successfully.');
             addLog('Flashing finished successfully.');
           } else {
             setStatusChip('err', 'Update error');
             setProgress(pct, 'Update error');
-            setStatusMessage('Flashing failed. See log for details.', true);
             addLog('Flashing failed.');
           }
         }
@@ -648,102 +493,18 @@
       }
     }
 
-    uploadBox.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadBox.classList.add('dragover');
-    });
-
-    uploadBox.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      uploadBox.classList.remove('dragover');
-    });
-
-    uploadBox.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadBox.classList.remove('dragover');
-      if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
-        selectedFile = e.dataTransfer.files[0];
-        updateFileLabels();
-        setStatusMessage('');
-        addLog(`Selected file (drop): ${selectedFile.name} (${selectedFile.size} bytes)`);
-      }
-    });
-
-    fwInput.addEventListener('change', (e) => {
-      const files = e.target.files;
-      if(files && files.length > 0){
-        selectedFile = files[0];
-      } else {
-        selectedFile = null;
-      }
-      updateFileLabels();
-      setStatusMessage('');
-      if(selectedFile){
-        addLog(`Selected file: ${selectedFile.name} (${selectedFile.size} bytes)`);
-      }
-    });
-
-    // Upload firmware .bin to ESP32
-    document.getElementById('btnUpload').addEventListener('click', async () => {
-      if (!selectedFile) {
-        alert('Please select a firmware (.bin) file first.');
-        return;
-      }
-
-      setStatusChip('running', 'Uploading');
-      setProgress(0, 'Uploading…');
-      setStatusMessage('Uploading…');
-
-      const form = new FormData();
-      form.append('file', selectedFile);
+    document.getElementById('btnUpdate').addEventListener('click', async () => {
+      addLog('Requesting firmware update…');
+      setStatusChip('running', 'Updating');
+      setProgress(0, 'Preparing…');
 
       try {
-        const resp = await fetch('/upload_bin', { method: 'POST', body: form });
-        const txt  = await resp.text();
-
-        addLog(`[UPLOAD] Response: ${resp.status} ${txt}`);
-
-        if (resp.ok) {
-          setProgress(100, 'Upload finished');
-
-          setStatusMessage('Upload complete. Ready to start update.');
-          setStatusChip('ok', 'Uploaded');
-
-          addLog('[UPLOAD] Upload finished successfully.');
-
-          // MD5 after upload
-          try {
-            const sResp = await fetch('/flash_status');
-            if (sResp.ok) {
-              const st = await sResp.json();
-              updateMd5FromStatus(st);
-            }
-          } catch (e) {
-            addLog('Fetch MD5 after upload error: ' + e);
-          }
-        } else {
-          setStatusMessage('Upload failed: ' + txt, true);
-          setStatusChip('err', 'Upload error');
-          setProgress(0, 'Idle');
+        const resp_fw = await fetch('/check_firmware');
+        if (resp_fw.ok) {
+          const st = await resp_fw.json();
+          updateFwInfoFromStatus(st);
         }
 
-      } catch (e) {
-        addLog('[UPLOAD] Error: ' + e);
-        setStatusMessage('Upload error', true);
-        setStatusChip('err', 'Upload error');
-        setProgress(0, 'Idle');
-      }
-    });
-
-    // Start flashing STM32
-    document.getElementById('btnStart').addEventListener('click', async () => {
-      addLog('Requesting STM32 update start…');
-      setStatusChip('running', 'Updating');
-
-      setProgress(0, 'Preparing to flash…');
-      setStatusMessage('Updating STM32… please wait and do not power off.');
-
-      try {
         const resp = await fetch('/flash', { method: 'POST' });
         const txt  = await resp.text();
 
@@ -752,7 +513,6 @@
         if (!resp.ok) {
           setStatusChip('err', 'Update error');
           setProgress(0, 'Idle');
-          setStatusMessage('Failed to start flashing', true);
           return;
         }
 
@@ -763,7 +523,6 @@
 
       } catch (e) {
         addLog('Start update error: ' + e);
-        setStatusMessage('Start update error', true);
         setStatusChip('err', 'Update error');
         setProgress(0, 'Idle');
       }
@@ -777,18 +536,16 @@
       window.location.href = 'setting.html';
     });
 
-    updateFileLabels();
     addLog('STM32 OTA UI loaded.');
 
     (async () => {
       try {
-        const resp = await fetch('/flash_status');
+        const resp = await fetch('/check_firmware');
         if (resp.ok) {
           const st = await resp.json();
-          updateMd5FromStatus(st);
+          updateFwInfoFromStatus(st);
         }
-      } catch (e) {
-      }
+      } catch (e) {}
     })();
   </script>
 </body>
