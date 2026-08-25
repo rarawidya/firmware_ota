@@ -166,7 +166,7 @@ finish:
   f.close();
   SerialSTM.end();
   exit_bootloader_hw();
-  sendSSE("Flashing finished: " + localOk ? "OK" : "FAILED");
+  sendSSE(String("Flashing finished: ") + (localOk ? "OK" : "FAILED"));
   sendSSE("=== STM32 Flash sequence ended ===");
 
   if (localOk) gFlashStatus.gFlashPercent = 100;
